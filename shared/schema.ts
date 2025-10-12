@@ -27,6 +27,10 @@ export const tipoCampanaEnum = pgEnum("tipo_campana", ["itv", "revision", "cumpl
 export const estadoCampanaEnum = pgEnum("estado_campana", ["borrador", "activa", "pausada", "finalizada"]);
 export const tipoEncuestaEnum = pgEnum("tipo_encuesta", ["nps", "csat", "personalizada"]);
 export const estadoCuponEnum = pgEnum("estado_cupon", ["activo", "usado", "expirado", "cancelado"]);
+export const clasificacionResiduoEnum = pgEnum("clasificacion_residuo", ["peligroso", "no_peligroso"]);
+export const estadoFisicoResiduoEnum = pgEnum("estado_fisico_residuo", ["liquido", "solido", "pastoso"]);
+export const estadoContenedorEnum = pgEnum("estado_contenedor", ["disponible", "en_uso", "lleno", "en_recogida"]);
+export const estadoDIEnum = pgEnum("estado_di", ["borrador", "emitido", "cerrado", "anulado"]);
 
 // Usuarios y autenticación
 export const users = pgTable("users", {
@@ -376,6 +380,100 @@ export const cupones = pgTable("cupones", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Gestión de Residuos - Catálogo
+export const catalogoResiduos = pgTable("catalogo_residuos", {
+  id: serial("id").primaryKey(),
+  codigoLER: varchar("codigo_ler", { length: 20 }).notNull().unique(),
+  descripcion: text("descripcion").notNull(),
+  clasificacion: clasificacionResiduoEnum("clasificacion").notNull(),
+  estadoFisico: estadoFisicoResiduoEnum("estado_fisico").notNull(),
+  tiempoMaxAlmacenamiento: integer("tiempo_max_almacenamiento"),
+  unidadMedida: varchar("unidad_medida", { length: 20 }).notNull().default("kg"),
+  activo: boolean("activo").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Gestión de Residuos - Contenedores
+export const contenedoresResiduos = pgTable("contenedores_residuos", {
+  id: serial("id").primaryKey(),
+  codigo: varchar("codigo", { length: 50 }).notNull().unique(),
+  catalogoResiduoId: integer("catalogo_residuo_id").notNull().references(() => catalogoResiduos.id),
+  ubicacion: varchar("ubicacion", { length: 100 }).notNull(),
+  capacidadMaxima: decimal("capacidad_maxima", { precision: 10, scale: 2 }).notNull(),
+  cantidadActual: decimal("cantidad_actual", { precision: 10, scale: 2 }).default("0"),
+  estado: estadoContenedorEnum("estado").notNull().default("disponible"),
+  fechaInstalacion: timestamp("fecha_instalacion").notNull().defaultNow(),
+  observaciones: text("observaciones"),
+  activo: boolean("activo").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Gestión de Residuos - Gestores Autorizados
+export const gestoresResiduos = pgTable("gestores_residuos", {
+  id: serial("id").primaryKey(),
+  nima: varchar("nima", { length: 50 }).notNull().unique(),
+  razonSocial: varchar("razon_social", { length: 200 }).notNull(),
+  nif: varchar("nif", { length: 20 }).notNull().unique(),
+  email: varchar("email", { length: 255 }),
+  telefono: varchar("telefono", { length: 20 }),
+  direccion: text("direccion"),
+  codigoPostal: varchar("codigo_postal", { length: 10 }),
+  ciudad: varchar("ciudad", { length: 100 }),
+  provincia: varchar("provincia", { length: 100 }),
+  autorizacionVigente: boolean("autorizacion_vigente").default(true),
+  fechaCaducidadAutorizacion: timestamp("fecha_caducidad_autorizacion"),
+  residuosAutorizados: text("residuos_autorizados").array(),
+  notas: text("notas"),
+  activo: boolean("activo").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Gestión de Residuos - Registros de Generación
+export const registrosResiduos = pgTable("registros_residuos", {
+  id: serial("id").primaryKey(),
+  catalogoResiduoId: integer("catalogo_residuo_id").notNull().references(() => catalogoResiduos.id),
+  orId: integer("or_id").references(() => ordenesReparacion.id),
+  vehiculoId: integer("vehiculo_id").references(() => vehiculos.id),
+  contenedorId: integer("contenedor_id").references(() => contenedoresResiduos.id),
+  cantidad: decimal("cantidad", { precision: 10, scale: 2 }).notNull(),
+  fecha: timestamp("fecha").notNull().defaultNow(),
+  responsableId: integer("responsable_id").references(() => users.id),
+  observaciones: text("observaciones"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Gestión de Residuos - Documentos de Identificación (DI)
+export const documentosDI = pgTable("documentos_di", {
+  id: serial("id").primaryKey(),
+  numero: varchar("numero", { length: 50 }).notNull().unique(),
+  catalogoResiduoId: integer("catalogo_residuo_id").notNull().references(() => catalogoResiduos.id),
+  gestorId: integer("gestor_id").notNull().references(() => gestoresResiduos.id),
+  fechaEmision: timestamp("fecha_emision").notNull().defaultNow(),
+  fechaRecogida: timestamp("fecha_recogida"),
+  cantidadTotal: decimal("cantidad_total", { precision: 10, scale: 2 }).notNull(),
+  estado: estadoDIEnum("estado").notNull().default("borrador"),
+  transportistaRazonSocial: varchar("transportista_razon_social", { length: 200 }),
+  transportistaMatricula: varchar("transportista_matricula", { length: 20 }),
+  observaciones: text("observaciones"),
+  createdById: integer("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Gestión de Residuos - Recogidas
+export const recogidasResiduos = pgTable("recogidas_residuos", {
+  id: serial("id").primaryKey(),
+  documentoDIId: integer("documento_di_id").references(() => documentosDI.id),
+  gestorId: integer("gestor_id").notNull().references(() => gestoresResiduos.id),
+  contenedorId: integer("contenedor_id").references(() => contenedoresResiduos.id),
+  fechaRecogida: timestamp("fecha_recogida").notNull().defaultNow(),
+  cantidadRecogida: decimal("cantidad_recogida", { precision: 10, scale: 2 }).notNull(),
+  albaranGestor: varchar("albaran_gestor", { length: 100 }),
+  costeGestion: decimal("coste_gestion", { precision: 10, scale: 2 }),
+  certificadoFinal: boolean("certificado_final").default(false),
+  observaciones: text("observaciones"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const clientesRelations = relations(clientes, ({ many }) => ({
   vehiculos: many(vehiculos),
@@ -624,6 +722,80 @@ export const cuponesRelations = relations(cupones, ({ one }) => ({
   }),
 }));
 
+export const catalogoResiduosRelations = relations(catalogoResiduos, ({ many }) => ({
+  contenedores: many(contenedoresResiduos),
+  registros: many(registrosResiduos),
+  documentosDI: many(documentosDI),
+}));
+
+export const contenedoresResiduosRelations = relations(contenedoresResiduos, ({ one, many }) => ({
+  catalogoResiduo: one(catalogoResiduos, {
+    fields: [contenedoresResiduos.catalogoResiduoId],
+    references: [catalogoResiduos.id],
+  }),
+  registros: many(registrosResiduos),
+  recogidas: many(recogidasResiduos),
+}));
+
+export const gestoresResiduosRelations = relations(gestoresResiduos, ({ many }) => ({
+  documentosDI: many(documentosDI),
+  recogidas: many(recogidasResiduos),
+}));
+
+export const registrosResiduosRelations = relations(registrosResiduos, ({ one }) => ({
+  catalogoResiduo: one(catalogoResiduos, {
+    fields: [registrosResiduos.catalogoResiduoId],
+    references: [catalogoResiduos.id],
+  }),
+  ordenReparacion: one(ordenesReparacion, {
+    fields: [registrosResiduos.orId],
+    references: [ordenesReparacion.id],
+  }),
+  vehiculo: one(vehiculos, {
+    fields: [registrosResiduos.vehiculoId],
+    references: [vehiculos.id],
+  }),
+  contenedor: one(contenedoresResiduos, {
+    fields: [registrosResiduos.contenedorId],
+    references: [contenedoresResiduos.id],
+  }),
+  responsable: one(users, {
+    fields: [registrosResiduos.responsableId],
+    references: [users.id],
+  }),
+}));
+
+export const documentosDIRelations = relations(documentosDI, ({ one, many }) => ({
+  catalogoResiduo: one(catalogoResiduos, {
+    fields: [documentosDI.catalogoResiduoId],
+    references: [catalogoResiduos.id],
+  }),
+  gestor: one(gestoresResiduos, {
+    fields: [documentosDI.gestorId],
+    references: [gestoresResiduos.id],
+  }),
+  createdBy: one(users, {
+    fields: [documentosDI.createdById],
+    references: [users.id],
+  }),
+  recogidas: many(recogidasResiduos),
+}));
+
+export const recogidasResiduosRelations = relations(recogidasResiduos, ({ one }) => ({
+  documentoDI: one(documentosDI, {
+    fields: [recogidasResiduos.documentoDIId],
+    references: [documentosDI.id],
+  }),
+  gestor: one(gestoresResiduos, {
+    fields: [recogidasResiduos.gestorId],
+    references: [gestoresResiduos.id],
+  }),
+  contenedor: one(contenedoresResiduos, {
+    fields: [recogidasResiduos.contenedorId],
+    references: [contenedoresResiduos.id],
+  }),
+}));
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -659,6 +831,12 @@ export const insertCuponSchema = createInsertSchema(cupones).omit({ id: true, cr
   fechaInicio: z.coerce.date(),
   fechaExpiracion: z.coerce.date(),
 });
+export const insertCatalogoResiduoSchema = createInsertSchema(catalogoResiduos).omit({ id: true, createdAt: true });
+export const insertContenedorResiduoSchema = createInsertSchema(contenedoresResiduos).omit({ id: true, createdAt: true });
+export const insertGestorResiduoSchema = createInsertSchema(gestoresResiduos).omit({ id: true, createdAt: true });
+export const insertRegistroResiduoSchema = createInsertSchema(registrosResiduos).omit({ id: true, createdAt: true });
+export const insertDocumentoDISchema = createInsertSchema(documentosDI).omit({ id: true, createdAt: true });
+export const insertRecogidaResiduoSchema = createInsertSchema(recogidasResiduos).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -707,3 +885,15 @@ export type RespuestaEncuesta = typeof respuestasEncuestas.$inferSelect;
 export type InsertRespuestaEncuesta = z.infer<typeof insertRespuestaEncuestaSchema>;
 export type Cupon = typeof cupones.$inferSelect;
 export type InsertCupon = z.infer<typeof insertCuponSchema>;
+export type CatalogoResiduo = typeof catalogoResiduos.$inferSelect;
+export type InsertCatalogoResiduo = z.infer<typeof insertCatalogoResiduoSchema>;
+export type ContenedorResiduo = typeof contenedoresResiduos.$inferSelect;
+export type InsertContenedorResiduo = z.infer<typeof insertContenedorResiduoSchema>;
+export type GestorResiduo = typeof gestoresResiduos.$inferSelect;
+export type InsertGestorResiduo = z.infer<typeof insertGestorResiduoSchema>;
+export type RegistroResiduo = typeof registrosResiduos.$inferSelect;
+export type InsertRegistroResiduo = z.infer<typeof insertRegistroResiduoSchema>;
+export type DocumentoDI = typeof documentosDI.$inferSelect;
+export type InsertDocumentoDI = z.infer<typeof insertDocumentoDISchema>;
+export type RecogidaResiduo = typeof recogidasResiduos.$inferSelect;
+export type InsertRecogidaResiduo = z.infer<typeof insertRecogidaResiduoSchema>;
