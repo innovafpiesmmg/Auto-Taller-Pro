@@ -59,8 +59,11 @@ Sistema DMS (Dealer Management System) completo para talleres mecánicos de auto
    - Vinculación con facturas
 
 ### Autenticación y Roles
-- Sistema JWT con roles: Admin, Jefe Taller, Recepción, Mecánico, Almacén, Finanzas
+- Sistema JWT con control de acceso basado en roles (RBAC)
+- Roles disponibles: Admin, Jefe Taller, Recepción, Mecánico, Almacén, Finanzas
 - Usuario demo: `admin` / `admin123`
+- Solo administradores pueden crear nuevos usuarios
+- JWT_SECRET obligatorio en variables de entorno (sin fallback inseguro)
 
 ## Stack Tecnológico
 
@@ -113,8 +116,35 @@ Sistema DMS (Dealer Management System) completo para talleres mecánicos de auto
 ## API Endpoints
 
 ### Autenticación
-- `POST /api/auth/register` - Registro de usuario
+- `POST /api/auth/register` - Registro de usuario (solo Admin)
 - `POST /api/auth/login` - Login (retorna JWT)
+
+### Control de Acceso por Rol
+Todos los endpoints están protegidos con autenticación JWT y control de acceso basado en roles:
+
+**Clientes, Vehículos, Citas:**
+- GET: Admin, Jefe Taller, Recepción, Finanzas (Clientes) / Mecánico (Vehículos)
+- POST/PUT: Admin, Jefe Taller, Recepción
+
+**Órdenes de Reparación:**
+- GET: Admin, Jefe Taller, Recepción, Mecánico
+- POST: Admin, Jefe Taller, Recepción
+- PUT: Admin, Jefe Taller, Recepción, Mecánico
+
+**Artículos/Inventario:**
+- GET: Admin, Jefe Taller, Almacén, Mecánico, Recepción
+- POST/PUT: Admin, Jefe Taller, Almacén
+
+**Presupuestos:**
+- GET: Admin, Jefe Taller, Recepción, Finanzas
+- POST: Admin, Jefe Taller, Recepción
+- Aprobar: Admin, Jefe Taller, Finanzas
+
+**Facturas y Cobros:**
+- Acceso completo: Admin, Jefe Taller, Finanzas
+
+**Dashboard:**
+- GET: Admin, Jefe Taller, Recepción, Finanzas
 
 ### Clientes
 - `GET /api/clientes?search=` - Listar/buscar clientes

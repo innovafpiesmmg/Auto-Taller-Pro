@@ -145,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/clientes/:id", authenticateToken, async (req, res) => {
+  app.get("/api/clientes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const cliente = await storage.getCliente(id);
@@ -158,7 +158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/clientes", authenticateToken, async (req, res) => {
+  app.post("/api/clientes", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const validated = insertClienteSchema.parse(req.body);
       const cliente = await storage.createCliente(validated);
@@ -168,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/clientes/:id", authenticateToken, async (req, res) => {
+  app.put("/api/clientes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertClienteSchema.partial().parse(req.body);
@@ -183,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Vehículos routes
-  app.get("/api/vehiculos", authenticateToken, async (req, res) => {
+  app.get("/api/vehiculos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
       const { search, clienteId } = req.query;
       if (clienteId) {
@@ -197,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/vehiculos/:id", authenticateToken, async (req, res) => {
+  app.get("/api/vehiculos/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const vehiculo = await storage.getVehiculo(id);
@@ -210,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/vehiculos", authenticateToken, async (req, res) => {
+  app.post("/api/vehiculos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const validated = insertVehiculoSchema.parse(req.body);
       const vehiculo = await storage.createVehiculo(validated);
@@ -220,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/vehiculos/:id", authenticateToken, async (req, res) => {
+  app.put("/api/vehiculos/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertVehiculoSchema.partial().parse(req.body);
@@ -235,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Citas routes
-  app.get("/api/citas", authenticateToken, async (req, res) => {
+  app.get("/api/citas", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const { from, to } = req.query;
       const citas = await storage.getCitas(
@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/citas/:id", authenticateToken, async (req, res) => {
+  app.get("/api/citas/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const cita = await storage.getCita(id);
@@ -261,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/citas", authenticateToken, async (req, res) => {
+  app.post("/api/citas", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const validated = insertCitaSchema.parse(req.body);
       const cita = await storage.createCita(validated);
@@ -271,7 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/citas/:id", authenticateToken, async (req, res) => {
+  app.put("/api/citas/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertCitaSchema.partial().parse(req.body);
@@ -286,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Órdenes de Reparación routes
-  app.get("/api/ordenes", authenticateToken, async (req, res) => {
+  app.get("/api/ordenes", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
       const { estado } = req.query;
       const ordenes = await storage.getOrdenesReparacion(estado as string);
@@ -296,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/ordenes/:id", authenticateToken, async (req, res) => {
+  app.get("/api/ordenes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const orden = await storage.getOrdenReparacion(id);
@@ -309,7 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/ordenes", authenticateToken, async (req, res) => {
+  app.post("/api/ordenes", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const validated = insertOrdenReparacionSchema.parse(req.body);
       const orden = await storage.createOrdenReparacion(validated);
@@ -319,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/ordenes/:id", authenticateToken, async (req, res) => {
+  app.put("/api/ordenes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertOrdenReparacionSchema.partial().parse(req.body);
@@ -334,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Partes de Trabajo routes
-  app.get("/api/ordenes/:orId/partes", authenticateToken, async (req, res) => {
+  app.get("/api/ordenes/:orId/partes", authenticateToken, requireRole("admin", "jefe_taller", "mecanico"), async (req, res) => {
     try {
       const orId = parseInt(req.params.orId);
       const partes = await storage.getPartesTrabajo(orId);
@@ -344,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/ordenes/:orId/partes", authenticateToken, async (req, res) => {
+  app.post("/api/ordenes/:orId/partes", authenticateToken, requireRole("admin", "jefe_taller", "mecanico"), async (req, res) => {
     try {
       const orId = parseInt(req.params.orId);
       const validated = insertParteTrabajoSchema.parse({ ...req.body, orId });
@@ -356,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Artículos routes
-  app.get("/api/articulos", authenticateToken, async (req, res) => {
+  app.get("/api/articulos", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico", "recepcion"), async (req, res) => {
     try {
       const { search } = req.query;
       const articulos = await storage.getArticulos(search as string);
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/articulos/:id", authenticateToken, async (req, res) => {
+  app.get("/api/articulos/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico", "recepcion"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const articulo = await storage.getArticulo(id);
@@ -379,7 +379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/articulos", authenticateToken, async (req, res) => {
+  app.post("/api/articulos", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const validated = insertArticuloSchema.parse(req.body);
       const articulo = await storage.createArticulo(validated);
@@ -389,7 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/articulos/:id", authenticateToken, async (req, res) => {
+  app.put("/api/articulos/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const validated = insertArticuloSchema.partial().parse(req.body);
@@ -404,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Consumos routes
-  app.get("/api/ordenes/:orId/consumos", authenticateToken, async (req, res) => {
+  app.get("/api/ordenes/:orId/consumos", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico"), async (req, res) => {
     try {
       const orId = parseInt(req.params.orId);
       const consumos = await storage.getConsumosArticulos(orId);
@@ -414,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/ordenes/:orId/consumos", authenticateToken, async (req, res) => {
+  app.post("/api/ordenes/:orId/consumos", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico"), async (req, res) => {
     try {
       const orId = parseInt(req.params.orId);
       const validated = insertConsumoArticuloSchema.parse({ ...req.body, orId });
@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Presupuestos routes
-  app.get("/api/presupuestos", authenticateToken, async (req, res) => {
+  app.get("/api/presupuestos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "finanzas"), async (req, res) => {
     try {
       const presupuestos = await storage.getPresupuestos();
       res.json(presupuestos);
@@ -435,7 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/presupuestos/:id", authenticateToken, async (req, res) => {
+  app.get("/api/presupuestos/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const presupuesto = await storage.getPresupuesto(id);
@@ -448,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/presupuestos", authenticateToken, async (req, res) => {
+  app.post("/api/presupuestos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const validated = insertPresupuestoSchema.parse(req.body);
       const presupuesto = await storage.createPresupuesto(validated);
@@ -458,7 +458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/presupuestos/:id/aprobar", authenticateToken, async (req, res) => {
+  app.post("/api/presupuestos/:id/aprobar", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const presupuesto = await storage.updatePresupuesto(id, {
@@ -475,7 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Facturas routes
-  app.get("/api/facturas", authenticateToken, async (req, res) => {
+  app.get("/api/facturas", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const facturas = await storage.getFacturas();
       res.json(facturas);
@@ -484,7 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/facturas/:id", authenticateToken, async (req, res) => {
+  app.get("/api/facturas/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const factura = await storage.getFactura(id);
@@ -498,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/facturas", authenticateToken, async (req, res) => {
+  app.post("/api/facturas", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const { lineas, ...facturaData } = req.body;
       const validatedFactura = insertFacturaSchema.parse(facturaData);
@@ -519,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cobros routes
-  app.get("/api/cobros", authenticateToken, async (req, res) => {
+  app.get("/api/cobros", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const { facturaId } = req.query;
       const cobros = await storage.getCobros(facturaId ? parseInt(facturaId as string) : undefined);
@@ -529,7 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/cobros", authenticateToken, async (req, res) => {
+  app.post("/api/cobros", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const validated = insertCobroSchema.parse(req.body);
       const cobro = await storage.createCobro(validated);
@@ -540,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard stats route
-  app.get("/api/stats/dashboard", authenticateToken, async (req, res) => {
+  app.get("/api/stats/dashboard", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "finanzas"), async (req, res) => {
     try {
       const ordenes = await storage.getOrdenesReparacion();
       const citas = await storage.getCitas();

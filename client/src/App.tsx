@@ -30,15 +30,13 @@ function ProtectedRouter() {
   useEffect(() => {
     if (!isAuthenticated && location !== "/login") {
       setLocation("/login");
+    } else if (isAuthenticated && location === "/login") {
+      setLocation("/");
     }
   }, [isAuthenticated, location, setLocation]);
 
-  if (location === "/login") {
-    return <Login />;
-  }
-
   if (!isAuthenticated) {
-    return null;
+    return <Login />;
   }
 
   const sidebarStyle = {
