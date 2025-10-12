@@ -30,7 +30,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Ticket, Plus, Search, Percent, Euro } from "lucide-react";
+import { Ticket, Plus, Search, Percent, Euro, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Cupon } from "@shared/schema";
 import { format } from "date-fns";
 
@@ -38,6 +48,8 @@ export default function Cupones() {
   const [estadoFilter, setEstadoFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const [editingCupon, setEditingCupon] = useState<Cupon | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     codigo: "",
     descripcion: "",
@@ -56,6 +68,12 @@ export default function Cupones() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (editingCupon) {
+        return await apiRequest(`/api/cupones/${editingCupon.id}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        });
+      }
       return await apiRequest("/api/cupones", {
         method: "POST",
         body: JSON.stringify(data),
@@ -64,6 +82,7 @@ export default function Cupones() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cupones"] });
       setOpen(false);
+      setEditingCupon(null);
       setFormData({
         codigo: "",
         descripcion: "",
@@ -73,16 +92,64 @@ export default function Cupones() {
         fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         usosMaximos: 1,
       });
-      toast({ title: "Cupón creado exitosamente" });
+      toast({ title: editingCupon ? "Cupón actualizado exitosamente" : "Cupón creado exitosamente" });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Error al crear cupón", 
+        title: editingCupon ? "Error al actualizar cupón" : "Error al crear cupón", 
         description: error.message,
         variant: "destructive" 
       });
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/cupones/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cupones"] });
+      setDeletingId(null);
+      toast({ title: "Cupón eliminado exitosamente" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error al eliminar cupón", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const handleEdit = (cupon: Cupon) => {
+    setEditingCupon(cupon);
+    setFormData({
+      codigo: cupon.codigo,
+      descripcion: cupon.descripcion || "",
+      tipoDescuento: cupon.tipoDescuento,
+      valorDescuento: cupon.valorDescuento,
+      fechaInicio: new Date(cupon.fechaInicio).toISOString().split('T')[0],
+      fechaExpiracion: new Date(cupon.fechaExpiracion).toISOString().split('T')[0],
+      usosMaximos: cupon.usosMaximos || 1,
+    });
+    setOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpen(false);
+    setEditingCupon(null);
+    setFormData({
+      codigo: "",
+      descripcion: "",
+      tipoDescuento: "porcentaje",
+      valorDescuento: "10",
+      fechaInicio: new Date().toISOString().split('T')[0],
+      fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      usosMaximos: 1,
+    });
+  };
 
   const filteredCupones = cupones?.filter(cupon => {
     const matchesSearch = cupon.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,7 +203,7 @@ export default function Cupones() {
               <p className="text-sm text-muted-foreground">Gestiona cupones y promociones para clientes</p>
             </div>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={(open) => { if (open) setOpen(true); else handleCloseDialog(); }}>
             <DialogTrigger asChild>
               <Button data-testid="button-crear-cupon">
                 <Plus className="h-4 w-4 mr-2" />
@@ -145,7 +212,7 @@ export default function Cupones() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Crear Nuevo Cupón</DialogTitle>
+                <DialogTitle>{editingCupon ? "Editar Cupón" : "Crear Nuevo Cupón"}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -223,7 +290,7 @@ export default function Cupones() {
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setOpen(false)}>
+                <Button variant="outline" onClick={handleCloseDialog}>
                   Cancelar
                 </Button>
                 <Button 
@@ -231,7 +298,7 @@ export default function Cupones() {
                   disabled={createMutation.isPending || !formData.codigo}
                   data-testid="button-guardar-cupon"
                 >
-                  {createMutation.isPending ? "Guardando..." : "Guardar"}
+                  {createMutation.isPending ? "Guardando..." : editingCupon ? "Actualizar" : "Guardar"}
                 </Button>
               </div>
             </DialogContent>
@@ -346,13 +413,24 @@ export default function Cupones() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      data-testid={`button-ver-cupon-${cupon.id}`}
-                    >
-                      Ver detalles
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEdit(cupon)}
+                        data-testid={`button-editar-cupon-${cupon.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => setDeletingId(cupon.id)}
+                        data-testid={`button-eliminar-cupon-${cupon.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -360,6 +438,26 @@ export default function Cupones() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. El cupón será eliminado permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingId && deleteMutation.mutate(deletingId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

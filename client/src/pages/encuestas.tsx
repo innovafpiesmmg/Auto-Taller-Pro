@@ -30,13 +30,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ClipboardList, Plus, Search, Star } from "lucide-react";
+import { ClipboardList, Plus, Search, Star, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Encuesta, RespuestaEncuesta } from "@shared/schema";
 import { format } from "date-fns";
 
 export default function Encuestas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const [editingEncuesta, setEditingEncuesta] = useState<Encuesta | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     nombre: "",
     tipo: "csat" as const,
@@ -55,6 +67,12 @@ export default function Encuestas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      if (editingEncuesta) {
+        return await apiRequest(`/api/encuestas/${editingEncuesta.id}`, {
+          method: "PUT",
+          body: JSON.stringify(data),
+        });
+      }
       return await apiRequest("/api/encuestas", {
         method: "POST",
         body: JSON.stringify(data),
@@ -63,22 +81,65 @@ export default function Encuestas() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/encuestas"] });
       setOpen(false);
+      setEditingEncuesta(null);
       setFormData({
         nombre: "",
         tipo: "csat",
         pregunta: "",
         activa: true,
       });
-      toast({ title: "Encuesta creada exitosamente" });
+      toast({ title: editingEncuesta ? "Encuesta actualizada exitosamente" : "Encuesta creada exitosamente" });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Error al crear encuesta", 
+        title: editingEncuesta ? "Error al actualizar encuesta" : "Error al crear encuesta", 
         description: error.message,
         variant: "destructive" 
       });
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/encuestas/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/encuestas"] });
+      setDeletingId(null);
+      toast({ title: "Encuesta eliminada exitosamente" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error al eliminar encuesta", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const handleEdit = (encuesta: Encuesta) => {
+    setEditingEncuesta(encuesta);
+    setFormData({
+      nombre: encuesta.nombre,
+      tipo: encuesta.tipo as any,
+      pregunta: encuesta.pregunta,
+      activa: encuesta.activa,
+    });
+    setOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpen(false);
+    setEditingEncuesta(null);
+    setFormData({
+      nombre: "",
+      tipo: "csat",
+      pregunta: "",
+      activa: true,
+    });
+  };
 
   const filteredEncuestas = encuestas?.filter(encuesta => {
     const matchesSearch = encuesta.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -130,7 +191,7 @@ export default function Encuestas() {
               <p className="text-sm text-muted-foreground">Mide NPS, CSAT y feedback de clientes</p>
             </div>
           </div>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={(open) => { if (open) setOpen(true); else handleCloseDialog(); }}>
             <DialogTrigger asChild>
               <Button data-testid="button-crear-encuesta">
                 <Plus className="h-4 w-4 mr-2" />
@@ -139,7 +200,7 @@ export default function Encuestas() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Crear Nueva Encuesta</DialogTitle>
+                <DialogTitle>{editingEncuesta ? "Editar Encuesta" : "Crear Nueva Encuesta"}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -176,7 +237,7 @@ export default function Encuestas() {
                 </div>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setOpen(false)}>
+                <Button variant="outline" onClick={handleCloseDialog}>
                   Cancelar
                 </Button>
                 <Button 
@@ -184,7 +245,7 @@ export default function Encuestas() {
                   disabled={createMutation.isPending || !formData.nombre || !formData.pregunta}
                   data-testid="button-guardar-encuesta"
                 >
-                  {createMutation.isPending ? "Guardando..." : "Guardar"}
+                  {createMutation.isPending ? "Guardando..." : editingEncuesta ? "Actualizar" : "Guardar"}
                 </Button>
               </div>
             </DialogContent>
@@ -273,13 +334,24 @@ export default function Encuestas() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        data-testid={`button-ver-encuesta-${encuesta.id}`}
-                      >
-                        Ver detalles
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleEdit(encuesta)}
+                          data-testid={`button-editar-encuesta-${encuesta.id}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => setDeletingId(encuesta.id)}
+                          data-testid={`button-eliminar-encuesta-${encuesta.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -288,6 +360,26 @@ export default function Encuestas() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La encuesta será eliminada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingId && deleteMutation.mutate(deletingId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
