@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -34,32 +36,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import type { GestorResiduo } from "@shared/schema";
+import { insertGestorResiduoSchema } from "@shared/schema";
 import { Checkbox } from "@/components/ui/checkbox";
+
+const formSchema = insertGestorResiduoSchema;
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function GestoresResiduos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [editingGestor, setEditingGestor] = useState<GestorResiduo | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    razonSocial: "",
-    nif: "",
-    nima: "",
-    direccion: "",
-    telefono: "",
-    email: "",
-    autorizacionVigente: true,
-    notas: "",
-  });
   const { toast } = useToast();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      razonSocial: "",
+      nif: "",
+      nima: "",
+      direccion: "",
+      telefono: "",
+      email: "",
+      autorizacionVigente: true,
+      notas: "",
+    },
+  });
 
   const { data: gestores, isLoading } = useQuery<GestorResiduo[]>({
     queryKey: ["/api/gestores-residuos"],
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: FormValues) => {
       if (editingGestor) {
         return await apiRequest(`/api/gestores-residuos/${editingGestor.id}`, {
           method: "PUT",
@@ -75,16 +94,7 @@ export default function GestoresResiduos() {
       queryClient.invalidateQueries({ queryKey: ["/api/gestores-residuos"] });
       setOpen(false);
       setEditingGestor(null);
-      setFormData({
-        razonSocial: "",
-        nif: "",
-        nima: "",
-        direccion: "",
-        telefono: "",
-        email: "",
-        autorizacionVigente: true,
-        notas: "",
-      });
+      form.reset();
       toast({ title: editingGestor ? "Gestor actualizado exitosamente" : "Gestor creado exitosamente" });
     },
     onError: (error: any) => {
@@ -118,32 +128,25 @@ export default function GestoresResiduos() {
 
   const handleEdit = (gestor: GestorResiduo) => {
     setEditingGestor(gestor);
-    setFormData({
-      razonSocial: gestor.razonSocial,
-      nif: gestor.nif,
-      nima: gestor.nima,
-      direccion: gestor.direccion || "",
-      telefono: gestor.telefono || "",
-      email: gestor.email || "",
-      autorizacionVigente: gestor.autorizacionVigente,
-      notas: gestor.notas || "",
-    });
+    form.setValue("razonSocial", gestor.razonSocial);
+    form.setValue("nif", gestor.nif);
+    form.setValue("nima", gestor.nima);
+    form.setValue("direccion", gestor.direccion || "");
+    form.setValue("telefono", gestor.telefono || "");
+    form.setValue("email", gestor.email || "");
+    form.setValue("autorizacionVigente", gestor.autorizacionVigente);
+    form.setValue("notas", gestor.notas || "");
     setOpen(true);
   };
 
   const handleCloseDialog = () => {
     setOpen(false);
     setEditingGestor(null);
-    setFormData({
-      razonSocial: "",
-      nif: "",
-      nima: "",
-      direccion: "",
-      telefono: "",
-      email: "",
-      autorizacionVigente: true,
-      notas: "",
-    });
+    form.reset();
+  };
+
+  const onSubmit = (data: FormValues) => {
+    createMutation.mutate(data);
   };
 
   const filteredGestores = gestores?.filter(gestor => {
@@ -152,11 +155,6 @@ export default function GestoresResiduos() {
       gestor.nima.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(formData);
-  };
 
   return (
     <div className="space-y-6">
@@ -182,122 +180,181 @@ export default function GestoresResiduos() {
             <DialogHeader>
               <DialogTitle>{editingGestor ? "Editar Gestor" : "Nuevo Gestor"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="razonSocial">Razón Social</Label>
-                <Input
-                  id="razonSocial"
-                  data-testid="input-razon-social"
-                  value={formData.razonSocial}
-                  onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
-                  placeholder="Nombre de la empresa"
-                  required
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="razonSocial"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Razón Social</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          data-testid="input-razon-social"
+                          placeholder="Nombre de la empresa"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nif">NIF</Label>
-                  <Input
-                    id="nif"
-                    data-testid="input-nif"
-                    value={formData.nif}
-                    onChange={(e) => setFormData({ ...formData, nif: e.target.value })}
-                    placeholder="B12345678"
-                    required
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="nif"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>NIF</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            data-testid="input-nif"
+                            placeholder="B12345678"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="nima"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número NIMA</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            data-testid="input-nima"
+                            placeholder="Número de inscripción NIMA"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="nima">Número NIMA</Label>
-                  <Input
-                    id="nima"
-                    data-testid="input-nima"
-                    value={formData.nima}
-                    onChange={(e) => setFormData({ ...formData, nima: e.target.value })}
-                    placeholder="Número de inscripción NIMA"
-                    required
+                <FormField
+                  control={form.control}
+                  name="direccion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dirección</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-direccion"
+                          placeholder="Dirección completa"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="telefono"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teléfono</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-telefono"
+                            placeholder="922123456"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-email"
+                            type="email"
+                            placeholder="contacto@gestor.com"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="direccion">Dirección</Label>
-                <Input
-                  id="direccion"
-                  data-testid="input-direccion"
-                  value={formData.direccion}
-                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                  placeholder="Dirección completa"
+                <FormField
+                  control={form.control}
+                  name="autorizacionVigente"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          data-testid="checkbox-autorizacion"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel className="cursor-pointer">
+                        Autorización vigente
+                      </FormLabel>
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="telefono">Teléfono</Label>
-                  <Input
-                    id="telefono"
-                    data-testid="input-telefono"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    placeholder="922123456"
-                  />
+                <FormField
+                  control={form.control}
+                  name="notas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notas</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="textarea-notas"
+                          placeholder="Notas adicionales (opcional)"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={createMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createMutation.isPending ? "Guardando..." : editingGestor ? "Actualizar" : "Crear"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCloseDialog}
+                    data-testid="button-cancel"
+                  >
+                    Cancelar
+                  </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    data-testid="input-email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="contacto@gestor.com"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="autorizacionVigente"
-                  data-testid="checkbox-autorizacion"
-                  checked={formData.autorizacionVigente}
-                  onCheckedChange={(checked) => setFormData({ ...formData, autorizacionVigente: checked as boolean })}
-                />
-                <Label htmlFor="autorizacionVigente" className="cursor-pointer">
-                  Autorización vigente
-                </Label>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notas">Notas</Label>
-                <Textarea
-                  id="notas"
-                  data-testid="textarea-notas"
-                  value={formData.notas}
-                  onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                  placeholder="Notas adicionales (opcional)"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending}
-                  data-testid="button-submit"
-                >
-                  {createMutation.isPending ? "Guardando..." : editingGestor ? "Actualizar" : "Crear"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCloseDialog}
-                  data-testid="button-cancel"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
@@ -306,7 +363,7 @@ export default function GestoresResiduos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            data-testid="input-search"
+            data-testid="input-buscar"
             placeholder="Buscar por razón social, NIF o NIMA..."
             className="pl-10"
             value={searchTerm}
@@ -341,7 +398,7 @@ export default function GestoresResiduos() {
               ))
             ) : filteredGestores && filteredGestores.length > 0 ? (
               filteredGestores.map((gestor) => (
-                <TableRow key={gestor.id}>
+                <TableRow key={gestor.id} data-testid={`row-gestor-${gestor.id}`}>
                   <TableCell data-testid={`text-razon-${gestor.id}`} className="font-medium">{gestor.razonSocial}</TableCell>
                   <TableCell data-testid={`text-nif-${gestor.id}`} className="font-mono">{gestor.nif}</TableCell>
                   <TableCell data-testid={`text-nima-${gestor.id}`} className="font-mono">{gestor.nima}</TableCell>

@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -41,22 +43,39 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import type { ContenedorResiduo, CatalogoResiduo } from "@shared/schema";
+import { insertContenedorResiduoSchema } from "@shared/schema";
+
+const formSchema = insertContenedorResiduoSchema;
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function ContenedoresResiduos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [editingContenedor, setEditingContenedor] = useState<ContenedorResiduo | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    codigo: "",
-    catalogoResiduoId: "",
-    capacidadMaxima: "",
-    ubicacion: "",
-    estado: "disponible" as "disponible" | "en_uso" | "lleno" | "en_recogida",
-    observaciones: "",
-  });
   const { toast } = useToast();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      codigo: "",
+      catalogoResiduoId: 0,
+      ubicacion: "",
+      capacidadMaxima: "0",
+      estado: "disponible",
+      observaciones: "",
+    },
+  });
 
   const { data: contenedores, isLoading } = useQuery<ContenedorResiduo[]>({
     queryKey: ["/api/contenedores-residuos"],
@@ -67,38 +86,23 @@ export default function ContenedoresResiduos() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: FormValues) => {
       if (editingContenedor) {
         return await apiRequest(`/api/contenedores-residuos/${editingContenedor.id}`, {
           method: "PUT",
-          body: JSON.stringify({
-            ...data,
-            catalogoResiduoId: parseInt(data.catalogoResiduoId),
-            capacidadMaxima: parseFloat(data.capacidadMaxima),
-          }),
+          body: JSON.stringify(data),
         });
       }
       return await apiRequest("/api/contenedores-residuos", {
         method: "POST",
-        body: JSON.stringify({
-          ...data,
-          catalogoResiduoId: parseInt(data.catalogoResiduoId),
-          capacidadMaxima: parseFloat(data.capacidadMaxima),
-        }),
+        body: JSON.stringify(data),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contenedores-residuos"] });
       setOpen(false);
       setEditingContenedor(null);
-      setFormData({
-        codigo: "",
-        catalogoResiduoId: "",
-        capacidadMaxima: "",
-        ubicacion: "",
-        estado: "disponible",
-        observaciones: "",
-      });
+      form.reset();
       toast({ title: editingContenedor ? "Contenedor actualizado exitosamente" : "Contenedor creado exitosamente" });
     },
     onError: (error: any) => {
@@ -132,28 +136,23 @@ export default function ContenedoresResiduos() {
 
   const handleEdit = (contenedor: ContenedorResiduo) => {
     setEditingContenedor(contenedor);
-    setFormData({
-      codigo: contenedor.codigo,
-      catalogoResiduoId: contenedor.catalogoResiduoId.toString(),
-      capacidadMaxima: contenedor.capacidadMaxima.toString(),
-      ubicacion: contenedor.ubicacion || "",
-      estado: contenedor.estado,
-      observaciones: contenedor.observaciones || "",
-    });
+    form.setValue("codigo", contenedor.codigo);
+    form.setValue("catalogoResiduoId", contenedor.catalogoResiduoId);
+    form.setValue("ubicacion", contenedor.ubicacion);
+    form.setValue("capacidadMaxima", contenedor.capacidadMaxima);
+    form.setValue("estado", contenedor.estado);
+    form.setValue("observaciones", contenedor.observaciones || "");
     setOpen(true);
   };
 
   const handleCloseDialog = () => {
     setOpen(false);
     setEditingContenedor(null);
-    setFormData({
-      codigo: "",
-      catalogoResiduoId: "",
-      capacidadMaxima: "",
-      ubicacion: "",
-      estado: "disponible",
-      observaciones: "",
-    });
+    form.reset();
+  };
+
+  const onSubmit = (data: FormValues) => {
+    createMutation.mutate(data);
   };
 
   const filteredContenedores = contenedores?.filter(contenedor => {
@@ -187,11 +186,6 @@ export default function ContenedoresResiduos() {
     return catalogo ? `${catalogo.codigoLER} - ${catalogo.descripcion}` : catalogoId;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(formData);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -216,113 +210,156 @@ export default function ContenedoresResiduos() {
             <DialogHeader>
               <DialogTitle>{editingContenedor ? "Editar Contenedor" : "Nuevo Contenedor"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="codigo">Código</Label>
-                <Input
-                  id="codigo"
-                  data-testid="input-codigo"
-                  value={formData.codigo}
-                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                  placeholder="Ej: CONT-001"
-                  required
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="codigo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Código</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          data-testid="input-codigo"
+                          placeholder="Ej: CONT-001"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="catalogoResiduoId">Tipo de Residuo</Label>
-                <Select
-                  value={formData.catalogoResiduoId}
-                  onValueChange={(value) => setFormData({ ...formData, catalogoResiduoId: value })}
-                >
-                  <SelectTrigger id="catalogoResiduoId" data-testid="select-catalogo">
-                    <SelectValue placeholder="Seleccionar tipo de residuo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {catalogos?.map((catalogo) => (
-                      <SelectItem key={catalogo.id} value={catalogo.id.toString()}>
-                        {catalogo.codigoLER} - {catalogo.descripcion}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <FormField
+                  control={form.control}
+                  name="catalogoResiduoId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Residuo</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-catalogo">
+                            <SelectValue placeholder="Seleccionar tipo de residuo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {catalogos?.map((catalogo) => (
+                            <SelectItem key={catalogo.id} value={catalogo.id.toString()}>
+                              {catalogo.codigoLER} - {catalogo.descripcion}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="capacidadMaxima">Capacidad Máxima</Label>
-                  <Input
-                    id="capacidadMaxima"
-                    data-testid="input-capacidad"
-                    type="number"
-                    step="0.01"
-                    value={formData.capacidadMaxima}
-                    onChange={(e) => setFormData({ ...formData, capacidadMaxima: e.target.value })}
-                    placeholder="100"
-                    required
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="capacidadMaxima"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Capacidad Máxima</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            data-testid="input-capacidad"
+                            type="number"
+                            step="0.01"
+                            placeholder="100"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="ubicacion"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ubicación</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            data-testid="input-ubicacion"
+                            placeholder="Ej: Almacén A - Zona 3"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="ubicacion">Ubicación</Label>
-                  <Input
-                    id="ubicacion"
-                    data-testid="input-ubicacion"
-                    value={formData.ubicacion}
-                    onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                    placeholder="Ej: Almacén A - Zona 3"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
-                >
-                  <SelectTrigger id="estado" data-testid="select-estado">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="disponible">Disponible</SelectItem>
-                    <SelectItem value="en_uso">En Uso</SelectItem>
-                    <SelectItem value="lleno">Lleno</SelectItem>
-                    <SelectItem value="en_recogida">En Recogida</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observaciones">Observaciones</Label>
-                <Textarea
-                  id="observaciones"
-                  data-testid="textarea-observaciones"
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  placeholder="Observaciones (opcional)"
+                <FormField
+                  control={form.control}
+                  name="estado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-estado">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="disponible">Disponible</SelectItem>
+                          <SelectItem value="en_uso">En Uso</SelectItem>
+                          <SelectItem value="lleno">Lleno</SelectItem>
+                          <SelectItem value="en_recogida">En Recogida</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending}
-                  data-testid="button-submit"
-                >
-                  {createMutation.isPending ? "Guardando..." : editingContenedor ? "Actualizar" : "Crear"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCloseDialog}
-                  data-testid="button-cancel"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="observaciones"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observaciones</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="textarea-observaciones"
+                          placeholder="Observaciones (opcional)"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={createMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createMutation.isPending ? "Guardando..." : editingContenedor ? "Actualizar" : "Crear"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCloseDialog}
+                    data-testid="button-cancel"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
@@ -331,7 +368,7 @@ export default function ContenedoresResiduos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            data-testid="input-search"
+            data-testid="input-buscar"
             placeholder="Buscar por código o ubicación..."
             className="pl-10"
             value={searchTerm}
@@ -368,7 +405,7 @@ export default function ContenedoresResiduos() {
               ))
             ) : filteredContenedores && filteredContenedores.length > 0 ? (
               filteredContenedores.map((contenedor) => (
-                <TableRow key={contenedor.id}>
+                <TableRow key={contenedor.id} data-testid={`row-contenedor-${contenedor.id}`}>
                   <TableCell data-testid={`text-codigo-${contenedor.id}`} className="font-mono">{contenedor.codigo}</TableCell>
                   <TableCell data-testid={`text-catalogo-${contenedor.id}`}>{getCatalogoNombre(contenedor.catalogoResiduoId)}</TableCell>
                   <TableCell data-testid={`text-capacidad-${contenedor.id}`}>{contenedor.capacidadMaxima}</TableCell>

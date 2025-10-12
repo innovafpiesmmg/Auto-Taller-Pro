@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -40,22 +42,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import type { RecogidaResiduo, DocumentoDI, ContenedorResiduo } from "@shared/schema";
+import { insertRecogidaResiduoSchema } from "@shared/schema";
 import { format } from "date-fns";
+
+const formSchema = insertRecogidaResiduoSchema.extend({
+  fechaRecogida: z.coerce.date(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function RecogidasResiduos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [editingRecogida, setEditingRecogida] = useState<RecogidaResiduo | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    documentoDIId: "",
-    contenedorId: "",
-    fechaRecogida: new Date().toISOString().split('T')[0],
-    cantidadRecogida: "",
-    observaciones: "",
-  });
   const { toast } = useToast();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      documentoDIId: 0,
+      contenedorId: 0,
+      fechaRecogida: new Date(),
+      cantidadRecogida: "0",
+      observaciones: "",
+    },
+  });
 
   const { data: recogidas, isLoading } = useQuery<RecogidaResiduo[]>({
     queryKey: ["/api/recogidas-residuos"],
@@ -70,41 +91,27 @@ export default function RecogidasResiduos() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: FormValues) => {
+      const payload = {
+        ...data,
+        fechaRecogida: data.fechaRecogida.toISOString(),
+      };
       if (editingRecogida) {
         return await apiRequest(`/api/recogidas-residuos/${editingRecogida.id}`, {
           method: "PUT",
-          body: JSON.stringify({
-            ...data,
-            documentoDIId: parseInt(data.documentoDIId),
-            contenedorId: parseInt(data.contenedorId),
-            cantidadRecogida: parseFloat(data.cantidadRecogida),
-            fechaRecogida: new Date(data.fechaRecogida).toISOString(),
-          }),
+          body: JSON.stringify(payload),
         });
       }
       return await apiRequest("/api/recogidas-residuos", {
         method: "POST",
-        body: JSON.stringify({
-          ...data,
-          documentoDIId: parseInt(data.documentoDIId),
-          contenedorId: parseInt(data.contenedorId),
-          cantidadRecogida: parseFloat(data.cantidadRecogida),
-          fechaRecogida: new Date(data.fechaRecogida).toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/recogidas-residuos"] });
       setOpen(false);
       setEditingRecogida(null);
-      setFormData({
-        documentoDIId: "",
-        contenedorId: "",
-        fechaRecogida: new Date().toISOString().split('T')[0],
-        cantidadRecogida: "",
-        observaciones: "",
-      });
+      form.reset();
       toast({ title: editingRecogida ? "Recogida actualizada exitosamente" : "Recogida creada exitosamente" });
     },
     onError: (error: any) => {
@@ -138,31 +145,28 @@ export default function RecogidasResiduos() {
 
   const handleEdit = (recogida: RecogidaResiduo) => {
     setEditingRecogida(recogida);
-    setFormData({
-      documentoDIId: recogida.documentoDIId?.toString() || "",
-      contenedorId: recogida.contenedorId.toString(),
-      fechaRecogida: new Date(recogida.fechaRecogida).toISOString().split('T')[0],
-      cantidadRecogida: recogida.cantidadRecogida.toString(),
-      observaciones: recogida.observaciones || "",
-    });
+    form.setValue("documentoDIId", recogida.documentoDIId || 0);
+    form.setValue("contenedorId", recogida.contenedorId);
+    form.setValue("fechaRecogida", new Date(recogida.fechaRecogida));
+    form.setValue("cantidadRecogida", recogida.cantidadRecogida);
+    form.setValue("observaciones", recogida.observaciones || "");
     setOpen(true);
   };
 
   const handleCloseDialog = () => {
     setOpen(false);
     setEditingRecogida(null);
-    setFormData({
-      documentoDIId: "",
-      contenedorId: "",
-      fechaRecogida: new Date().toISOString().split('T')[0],
-      cantidadRecogida: "",
-      observaciones: "",
-    });
+    form.reset();
+  };
+
+  const onSubmit = (data: FormValues) => {
+    createMutation.mutate(data);
   };
 
   const filteredRecogidas = recogidas?.filter(recogida => {
     const documento = documentosDI?.find(d => d.id === recogida.documentoDIId);
-    const matchesSearch = documento?.numero.toLowerCase().includes(searchTerm.toLowerCase());
+    const numero = documento?.numero?.toLowerCase() ?? "";
+    const matchesSearch = numero.includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -175,11 +179,6 @@ export default function RecogidasResiduos() {
   const getContenedorCodigo = (contenedorId: number) => {
     const contenedor = contenedores?.find(c => c.id === contenedorId);
     return contenedor?.codigo || contenedorId;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(formData);
   };
 
   return (
@@ -206,102 +205,143 @@ export default function RecogidasResiduos() {
             <DialogHeader>
               <DialogTitle>{editingRecogida ? "Editar Recogida" : "Nueva Recogida"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="documentoDIId">Documento DI</Label>
-                <Select
-                  value={formData.documentoDIId}
-                  onValueChange={(value) => setFormData({ ...formData, documentoDIId: value })}
-                >
-                  <SelectTrigger id="documentoDIId" data-testid="select-documento">
-                    <SelectValue placeholder="Seleccionar documento DI" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {documentosDI?.map((documento) => (
-                      <SelectItem key={documento.id} value={documento.id.toString()}>
-                        {documento.numero} - {format(new Date(documento.fechaRecogida), "dd/MM/yyyy")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contenedorId">Contenedor</Label>
-                <Select
-                  value={formData.contenedorId}
-                  onValueChange={(value) => setFormData({ ...formData, contenedorId: value })}
-                >
-                  <SelectTrigger id="contenedorId" data-testid="select-contenedor">
-                    <SelectValue placeholder="Seleccionar contenedor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contenedores?.map((contenedor) => (
-                      <SelectItem key={contenedor.id} value={contenedor.id.toString()}>
-                        {contenedor.codigo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fechaRecogida">Fecha de Recogida</Label>
-                  <Input
-                    id="fechaRecogida"
-                    data-testid="input-fecha-recogida"
-                    type="date"
-                    value={formData.fechaRecogida}
-                    onChange={(e) => setFormData({ ...formData, fechaRecogida: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cantidadRecogida">Cantidad Recogida</Label>
-                  <Input
-                    id="cantidadRecogida"
-                    data-testid="input-cantidad"
-                    type="number"
-                    step="0.01"
-                    value={formData.cantidadRecogida}
-                    onChange={(e) => setFormData({ ...formData, cantidadRecogida: e.target.value })}
-                    placeholder="100.5"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observaciones">Observaciones</Label>
-                <Textarea
-                  id="observaciones"
-                  data-testid="textarea-observaciones"
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  placeholder="Notas adicionales (opcional)"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="documentoDIId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Documento DI</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-documento">
+                            <SelectValue placeholder="Seleccionar documento DI" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {documentosDI?.map((documento) => (
+                            <SelectItem key={documento.id} value={documento.id.toString()}>
+                              {documento.numero} - {format(new Date(documento.fechaRecogida), "dd/MM/yyyy")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending}
-                  data-testid="button-submit"
-                >
-                  {createMutation.isPending ? "Guardando..." : editingRecogida ? "Actualizar" : "Crear"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCloseDialog}
-                  data-testid="button-cancel"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
+                <FormField
+                  control={form.control}
+                  name="contenedorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contenedor</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-contenedor">
+                            <SelectValue placeholder="Seleccionar contenedor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {contenedores?.map((contenedor) => (
+                            <SelectItem key={contenedor.id} value={contenedor.id.toString()}>
+                              {contenedor.codigo}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="fechaRecogida"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha de Recogida</FormLabel>
+                        <FormControl>
+                          <Input
+                            data-testid="input-fecha-recogida"
+                            type="date"
+                            value={field.value instanceof Date ? format(field.value, "yyyy-MM-dd") : ""}
+                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cantidadRecogida"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cantidad Recogida</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            data-testid="input-cantidad"
+                            type="number"
+                            step="0.01"
+                            placeholder="100.5"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="observaciones"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observaciones</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="textarea-observaciones"
+                          placeholder="Notas adicionales (opcional)"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={createMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createMutation.isPending ? "Guardando..." : editingRecogida ? "Actualizar" : "Crear"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCloseDialog}
+                    data-testid="button-cancel"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
@@ -310,7 +350,7 @@ export default function RecogidasResiduos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            data-testid="input-search"
+            data-testid="input-buscar"
             placeholder="Buscar por documento DI..."
             className="pl-10"
             value={searchTerm}
@@ -343,7 +383,7 @@ export default function RecogidasResiduos() {
               ))
             ) : filteredRecogidas && filteredRecogidas.length > 0 ? (
               filteredRecogidas.map((recogida) => (
-                <TableRow key={recogida.id}>
+                <TableRow key={recogida.id} data-testid={`row-recogida-${recogida.id}`}>
                   <TableCell data-testid={`text-documento-${recogida.id}`} className="font-mono">
                     {getDocumentoNumero(recogida.documentoDIId)}
                   </TableCell>

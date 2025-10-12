@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -41,25 +43,45 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import type { DocumentoDI, GestorResiduo } from "@shared/schema";
+import { insertDocumentoDISchema } from "@shared/schema";
 import { format } from "date-fns";
+
+const formSchema = insertDocumentoDISchema.extend({
+  fechaEmision: z.coerce.date(),
+  fechaRecogida: z.coerce.date(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function DocumentosDI() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [editingDocumento, setEditingDocumento] = useState<DocumentoDI | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    numero: "",
-    gestorId: "",
-    fechaEmision: new Date().toISOString().split('T')[0],
-    fechaRecogida: new Date().toISOString().split('T')[0],
-    estado: "borrador" as "borrador" | "emitido" | "cerrado" | "anulado",
-    transportistaRazonSocial: "",
-    transportistaMatricula: "",
-    observaciones: "",
-  });
   const { toast } = useToast();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      numero: "",
+      gestorId: 0,
+      fechaEmision: new Date(),
+      fechaRecogida: new Date(),
+      estado: "borrador",
+      transportistaRazonSocial: "",
+      transportistaMatricula: "",
+      observaciones: "",
+    },
+  });
 
   const { data: documentos, isLoading } = useQuery<DocumentoDI[]>({
     queryKey: ["/api/documentos-di"],
@@ -70,42 +92,28 @@ export default function DocumentosDI() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: FormValues) => {
+      const payload = {
+        ...data,
+        fechaEmision: data.fechaEmision.toISOString(),
+        fechaRecogida: data.fechaRecogida.toISOString(),
+      };
       if (editingDocumento) {
         return await apiRequest(`/api/documentos-di/${editingDocumento.id}`, {
           method: "PUT",
-          body: JSON.stringify({
-            ...data,
-            gestorId: parseInt(data.gestorId),
-            fechaEmision: new Date(data.fechaEmision).toISOString(),
-            fechaRecogida: new Date(data.fechaRecogida).toISOString(),
-          }),
+          body: JSON.stringify(payload),
         });
       }
       return await apiRequest("/api/documentos-di", {
         method: "POST",
-        body: JSON.stringify({
-          ...data,
-          gestorId: parseInt(data.gestorId),
-          fechaEmision: new Date(data.fechaEmision).toISOString(),
-          fechaRecogida: new Date(data.fechaRecogida).toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/documentos-di"] });
       setOpen(false);
       setEditingDocumento(null);
-      setFormData({
-        numero: "",
-        gestorId: "",
-        fechaEmision: new Date().toISOString().split('T')[0],
-        fechaRecogida: new Date().toISOString().split('T')[0],
-        estado: "borrador",
-        transportistaRazonSocial: "",
-        transportistaMatricula: "",
-        observaciones: "",
-      });
+      form.reset();
       toast({ title: editingDocumento ? "Documento DI actualizado exitosamente" : "Documento DI creado exitosamente" });
     },
     onError: (error: any) => {
@@ -139,32 +147,25 @@ export default function DocumentosDI() {
 
   const handleEdit = (documento: DocumentoDI) => {
     setEditingDocumento(documento);
-    setFormData({
-      numero: documento.numero,
-      gestorId: documento.gestorId.toString(),
-      fechaEmision: new Date(documento.fechaEmision).toISOString().split('T')[0],
-      fechaRecogida: new Date(documento.fechaRecogida).toISOString().split('T')[0],
-      estado: documento.estado,
-      transportistaRazonSocial: documento.transportistaRazonSocial || "",
-      transportistaMatricula: documento.transportistaMatricula || "",
-      observaciones: documento.observaciones || "",
-    });
+    form.setValue("numero", documento.numero);
+    form.setValue("gestorId", documento.gestorId);
+    form.setValue("fechaEmision", new Date(documento.fechaEmision));
+    form.setValue("fechaRecogida", new Date(documento.fechaRecogida));
+    form.setValue("estado", documento.estado);
+    form.setValue("transportistaRazonSocial", documento.transportistaRazonSocial || "");
+    form.setValue("transportistaMatricula", documento.transportistaMatricula || "");
+    form.setValue("observaciones", documento.observaciones || "");
     setOpen(true);
   };
 
   const handleCloseDialog = () => {
     setOpen(false);
     setEditingDocumento(null);
-    setFormData({
-      numero: "",
-      gestorId: "",
-      fechaEmision: new Date().toISOString().split('T')[0],
-      fechaRecogida: new Date().toISOString().split('T')[0],
-      estado: "borrador",
-      transportistaRazonSocial: "",
-      transportistaMatricula: "",
-      observaciones: "",
-    });
+    form.reset();
+  };
+
+  const onSubmit = (data: FormValues) => {
+    createMutation.mutate(data);
   };
 
   const filteredDocumentos = documentos?.filter(documento => {
@@ -197,11 +198,6 @@ export default function DocumentosDI() {
     return gestor?.razonSocial || gestorId;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createMutation.mutate(formData);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -226,135 +222,196 @@ export default function DocumentosDI() {
             <DialogHeader>
               <DialogTitle>{editingDocumento ? "Editar Documento DI" : "Nuevo Documento DI"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="numero">Número DI</Label>
-                <Input
-                  id="numero"
-                  data-testid="input-numero-di"
-                  value={formData.numero}
-                  onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                  placeholder="DI-2025-001"
-                  required
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="numero"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número DI</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          data-testid="input-numero-di"
+                          placeholder="DI-2025-001"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="gestorId">Gestor Autorizado</Label>
-                <Select
-                  value={formData.gestorId}
-                  onValueChange={(value) => setFormData({ ...formData, gestorId: value })}
-                >
-                  <SelectTrigger id="gestorId" data-testid="select-gestor">
-                    <SelectValue placeholder="Seleccionar gestor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gestores?.filter(g => g.autorizacionVigente).map((gestor) => (
-                      <SelectItem key={gestor.id} value={gestor.id.toString()}>
-                        {gestor.razonSocial} - NIMA: {gestor.nima}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fechaEmision">Fecha de Emisión</Label>
-                  <Input
-                    id="fechaEmision"
-                    data-testid="input-fecha-emision"
-                    type="date"
-                    value={formData.fechaEmision}
-                    onChange={(e) => setFormData({ ...formData, fechaEmision: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="fechaRecogida">Fecha de Recogida</Label>
-                  <Input
-                    id="fechaRecogida"
-                    data-testid="input-fecha-recogida"
-                    type="date"
-                    value={formData.fechaRecogida}
-                    onChange={(e) => setFormData({ ...formData, fechaRecogida: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="transportistaRazonSocial">Transportista</Label>
-                  <Input
-                    id="transportistaRazonSocial"
-                    data-testid="input-transportista"
-                    value={formData.transportistaRazonSocial}
-                    onChange={(e) => setFormData({ ...formData, transportistaRazonSocial: e.target.value })}
-                    placeholder="Nombre del transportista"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="transportistaMatricula">Matrícula Transporte</Label>
-                  <Input
-                    id="transportistaMatricula"
-                    data-testid="input-matricula"
-                    value={formData.transportistaMatricula}
-                    onChange={(e) => setFormData({ ...formData, transportistaMatricula: e.target.value })}
-                    placeholder="1234-ABC"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
-                >
-                  <SelectTrigger id="estado" data-testid="select-estado">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="borrador">Borrador</SelectItem>
-                    <SelectItem value="emitido">Emitido</SelectItem>
-                    <SelectItem value="cerrado">Cerrado</SelectItem>
-                    <SelectItem value="anulado">Anulado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="observaciones">Observaciones</Label>
-                <Textarea
-                  id="observaciones"
-                  data-testid="textarea-observaciones"
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  placeholder="Notas adicionales (opcional)"
+                <FormField
+                  control={form.control}
+                  name="gestorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gestor Autorizado</FormLabel>
+                      <Select
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-gestor">
+                            <SelectValue placeholder="Seleccionar gestor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {gestores?.filter(g => g.autorizacionVigente).map((gestor) => (
+                            <SelectItem key={gestor.id} value={gestor.id.toString()}>
+                              {gestor.razonSocial} - NIMA: {gestor.nima}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending}
-                  data-testid="button-submit"
-                >
-                  {createMutation.isPending ? "Guardando..." : editingDocumento ? "Actualizar" : "Crear"}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleCloseDialog}
-                  data-testid="button-cancel"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="fechaEmision"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha de Emisión</FormLabel>
+                        <FormControl>
+                          <Input
+                            data-testid="input-fecha-emision"
+                            type="date"
+                            value={field.value instanceof Date ? format(field.value, "yyyy-MM-dd") : ""}
+                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="fechaRecogida"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha de Recogida</FormLabel>
+                        <FormControl>
+                          <Input
+                            data-testid="input-fecha-recogida"
+                            type="date"
+                            value={field.value instanceof Date ? format(field.value, "yyyy-MM-dd") : ""}
+                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="transportistaRazonSocial"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Transportista</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-transportista"
+                            placeholder="Nombre del transportista"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="transportistaMatricula"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Matrícula Transporte</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="input-matricula"
+                            placeholder="1234-ABC"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="estado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-estado">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="borrador">Borrador</SelectItem>
+                          <SelectItem value="emitido">Emitido</SelectItem>
+                          <SelectItem value="cerrado">Cerrado</SelectItem>
+                          <SelectItem value="anulado">Anulado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="observaciones"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observaciones</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="textarea-observaciones"
+                          placeholder="Notas adicionales (opcional)"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2 pt-4">
+                  <Button 
+                    type="submit" 
+                    disabled={createMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createMutation.isPending ? "Guardando..." : editingDocumento ? "Actualizar" : "Crear"}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCloseDialog}
+                    data-testid="button-cancel"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
@@ -363,7 +420,7 @@ export default function DocumentosDI() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            data-testid="input-search"
+            data-testid="input-buscar"
             placeholder="Buscar por número DI..."
             className="pl-10"
             value={searchTerm}
@@ -398,7 +455,7 @@ export default function DocumentosDI() {
               ))
             ) : filteredDocumentos && filteredDocumentos.length > 0 ? (
               filteredDocumentos.map((documento) => (
-                <TableRow key={documento.id}>
+                <TableRow key={documento.id} data-testid={`row-documento-${documento.id}`}>
                   <TableCell data-testid={`text-numero-${documento.id}`} className="font-mono font-medium">
                     {documento.numero}
                   </TableCell>
