@@ -27,6 +27,12 @@ import Ubicaciones from "@/pages/ubicaciones";
 import Campanas from "@/pages/campanas";
 import Encuestas from "@/pages/encuestas";
 import Cupones from "@/pages/cupones";
+import CatalogoResiduos from "@/pages/catalogo-residuos";
+import ContenedoresResiduos from "@/pages/contenedores-residuos";
+import GestoresResiduos from "@/pages/gestores-residuos";
+import RegistrosResiduos from "@/pages/registros-residuos";
+import DocumentosDI from "@/pages/documentos-di";
+import RecogidasResiduos from "@/pages/recogidas-residuos";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -94,6 +100,12 @@ function ProtectedRouter() {
               <Route path="/campanas" component={Campanas} />
               <Route path="/encuestas" component={Encuestas} />
               <Route path="/cupones" component={Cupones} />
+              <Route path="/catalogo-residuos" component={CatalogoResiduos} />
+              <Route path="/contenedores-residuos" component={ContenedoresResiduos} />
+              <Route path="/gestores-residuos" component={GestoresResiduos} />
+              <Route path="/registros-residuos" component={RegistrosResiduos} />
+              <Route path="/documentos-di" component={DocumentosDI} />
+              <Route path="/recogidas-residuos" component={RecogidasResiduos} />
               <Route component={NotFound} />
             </Switch>
           </main>

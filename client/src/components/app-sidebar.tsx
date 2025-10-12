@@ -15,7 +15,11 @@ import {
   MapPin,
   Megaphone,
   ClipboardList as ClipboardListIcon,
-  Ticket
+  Ticket,
+  Recycle,
+  Trash2,
+  BookOpen,
+  Truck
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -119,6 +123,39 @@ const crmPostventaItems = [
   },
 ];
 
+const gestionResiduosItems = [
+  {
+    title: "Catálogo de Residuos",
+    url: "/catalogo-residuos",
+    icon: BookOpen,
+  },
+  {
+    title: "Contenedores",
+    url: "/contenedores-residuos",
+    icon: Trash2,
+  },
+  {
+    title: "Gestores Autorizados",
+    url: "/gestores-residuos",
+    icon: Truck,
+  },
+  {
+    title: "Registros",
+    url: "/registros-residuos",
+    icon: ClipboardList,
+  },
+  {
+    title: "Documentos DI",
+    url: "/documentos-di",
+    icon: FileText,
+  },
+  {
+    title: "Recogidas",
+    url: "/recogidas-residuos",
+    icon: Recycle,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -185,6 +222,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {crmPostventaItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Gestión de Residuos</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {gestionResiduosItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild
