@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, PackageCheck, Pencil } from "lucide-react";
+import { Plus, PackageCheck, Pencil, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -19,6 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -55,6 +65,8 @@ type FormValues = z.infer<typeof formSchema>;
 export default function Recepciones() {
   const [open, setOpen] = useState(false);
   const [editingRecepcion, setEditingRecepcion] = useState<Recepcion | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const { data: recepciones, isLoading } = useQuery<Recepcion[]>({
@@ -131,6 +143,30 @@ export default function Recepciones() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/recepciones/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/recepciones"] });
+      toast({
+        title: "Recepción eliminada",
+        description: "La recepción se ha eliminado correctamente",
+      });
+      setDeleteDialogOpen(false);
+      setDeleteId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo eliminar la recepción",
+      });
+    },
+  });
+
   const handleEdit = (recepcion: Recepcion) => {
     setEditingRecepcion(recepcion);
     form.reset({
@@ -149,6 +185,17 @@ export default function Recepciones() {
     setOpen(false);
     setEditingRecepcion(null);
     form.reset();
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
   };
 
   const onSubmit = (data: FormValues) => {
@@ -283,9 +330,14 @@ export default function Recepciones() {
                         {recepcion.recibidoPorId ? `Usuario #${recepcion.recibidoPorId}` : '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(recepcion)} data-testid={`button-editar-${recepcion.id}`}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(recepcion)} data-testid={`button-editar-${recepcion.id}`}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(recepcion.id)} data-testid={`button-eliminar-${recepcion.id}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -445,6 +497,23 @@ export default function Recepciones() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="alert-dialog-eliminar">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la recepción.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancelar-eliminar">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending} data-testid="button-confirmar-eliminar">
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

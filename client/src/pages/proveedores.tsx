@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Building, Eye, Pencil } from "lucide-react";
+import { Plus, Search, Building, Eye, Pencil, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,6 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -48,10 +58,12 @@ export default function Proveedores() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
   const [editingProveedor, setEditingProveedor] = useState<Proveedor | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const { data: proveedores, isLoading } = useQuery<Proveedor[]>({
-    queryKey: ["/api/proveedores", searchTerm],
+    queryKey: ["/api/proveedores"],
   });
 
   const form = useForm<FormValues>({
@@ -122,6 +134,30 @@ export default function Proveedores() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/proveedores/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/proveedores"] });
+      toast({
+        title: "Proveedor eliminado",
+        description: "El proveedor se ha eliminado correctamente",
+      });
+      setDeleteDialogOpen(false);
+      setDeleteId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo eliminar el proveedor",
+      });
+    },
+  });
+
   const handleEdit = (proveedor: Proveedor) => {
     setEditingProveedor(proveedor);
     form.reset({
@@ -146,6 +182,17 @@ export default function Proveedores() {
     setOpen(false);
     setEditingProveedor(null);
     form.reset();
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
   };
 
   const onSubmit = (data: FormValues) => {
@@ -270,6 +317,9 @@ export default function Proveedores() {
                         <div className="flex gap-2 justify-end">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(proveedor)} data-testid={`button-editar-${proveedor.id}`}>
                             <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(proveedor.id)} data-testid={`button-eliminar-${proveedor.id}`}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
@@ -505,6 +555,23 @@ export default function Proveedores() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="alert-dialog-eliminar">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el proveedor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancelar-eliminar">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending} data-testid="button-confirmar-eliminar">
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

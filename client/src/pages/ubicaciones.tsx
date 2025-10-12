@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, MapPin, Pencil } from "lucide-react";
+import { Plus, MapPin, Pencil, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,6 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -46,6 +56,8 @@ type FormValues = z.infer<typeof formSchema>;
 export default function Ubicaciones() {
   const [open, setOpen] = useState(false);
   const [editingUbicacion, setEditingUbicacion] = useState<Ubicacion | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const { data: ubicaciones, isLoading } = useQuery<Ubicacion[]>({
@@ -114,6 +126,30 @@ export default function Ubicaciones() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/ubicaciones/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ubicaciones"] });
+      toast({
+        title: "Ubicación eliminada",
+        description: "La ubicación se ha eliminado correctamente",
+      });
+      setDeleteDialogOpen(false);
+      setDeleteId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo eliminar la ubicación",
+      });
+    },
+  });
+
   const handleEdit = (ubicacion: Ubicacion) => {
     setEditingUbicacion(ubicacion);
     form.reset({
@@ -132,6 +168,17 @@ export default function Ubicaciones() {
     setOpen(false);
     setEditingUbicacion(null);
     form.reset();
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
   };
 
   const onSubmit = (data: FormValues) => {
@@ -262,9 +309,14 @@ export default function Ubicaciones() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(ubicacion)} data-testid={`button-editar-${ubicacion.id}`}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(ubicacion)} data-testid={`button-editar-${ubicacion.id}`}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(ubicacion.id)} data-testid={`button-eliminar-${ubicacion.id}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -404,6 +456,23 @@ export default function Ubicaciones() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="alert-dialog-eliminar">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente la ubicación.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancelar-eliminar">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending} data-testid="button-confirmar-eliminar">
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

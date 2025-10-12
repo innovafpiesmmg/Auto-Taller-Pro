@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, ShoppingCart, Truck, Pencil } from "lucide-react";
+import { Plus, ShoppingCart, Truck, Pencil, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -20,6 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -66,10 +76,12 @@ export default function PedidosCompra() {
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [open, setOpen] = useState(false);
   const [editingPedido, setEditingPedido] = useState<PedidoCompra | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const { data: pedidos, isLoading } = useQuery<PedidoCompra[]>({
-    queryKey: ["/api/pedidos-compra", estadoFilter !== "todos" ? estadoFilter : undefined],
+    queryKey: ["/api/pedidos-compra"],
   });
 
   const { data: proveedores } = useQuery<Proveedor[]>({
@@ -139,6 +151,30 @@ export default function PedidosCompra() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/pedidos-compra/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pedidos-compra"] });
+      toast({
+        title: "Pedido eliminado",
+        description: "El pedido se ha eliminado correctamente",
+      });
+      setDeleteDialogOpen(false);
+      setDeleteId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo eliminar el pedido",
+      });
+    },
+  });
+
   const handleEdit = (pedido: PedidoCompra) => {
     setEditingPedido(pedido);
     form.reset({
@@ -160,6 +196,17 @@ export default function PedidosCompra() {
     form.reset();
   };
 
+  const handleDelete = (id: number) => {
+    setDeleteId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
+  };
+
   const onSubmit = (data: FormValues) => {
     if (editingPedido) {
       updateMutation.mutate(data);
@@ -168,7 +215,9 @@ export default function PedidosCompra() {
     }
   };
 
-  const pedidosFiltrados = pedidos || [];
+  const pedidosFiltrados = (pedidos || []).filter(pedido => 
+    estadoFilter === 'todos' || pedido.estado === estadoFilter
+  );
 
   const pedidosPorEstado = {
     todos: pedidos?.length || 0,
@@ -308,9 +357,14 @@ export default function PedidosCompra() {
                             {pedido.fechaEntregaEstimada ? format(new Date(pedido.fechaEntregaEstimada), 'dd/MM/yyyy') : '-'}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(pedido)} data-testid={`button-editar-${pedido.id}`}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2 justify-end">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(pedido)} data-testid={`button-editar-${pedido.id}`}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(pedido.id)} data-testid={`button-eliminar-${pedido.id}`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -498,6 +552,23 @@ export default function PedidosCompra() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent data-testid="alert-dialog-eliminar">
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente el pedido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancelar-eliminar">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleteMutation.isPending} data-testid="button-confirmar-eliminar">
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
