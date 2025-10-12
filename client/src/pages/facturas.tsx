@@ -21,23 +21,29 @@ export default function Facturas() {
 
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   
-  const totalHoy = facturas?.filter(f => 
-    f.fecha && new Date(f.fecha) >= startOfDay
-  ).reduce((sum, f) => sum + f.total, 0) || 0;
+  const totalHoy = facturas?.filter(f => {
+    const fecha = f.fecha && new Date(f.fecha);
+    return fecha && fecha >= startOfDay && fecha < startOfTomorrow;
+  }).reduce((sum, f) => sum + f.total, 0) || 0;
   
-  const totalMes = facturas?.filter(f => 
-    f.fecha && new Date(f.fecha) >= firstDayOfMonth
-  ).reduce((sum, f) => sum + f.total, 0) || 0;
+  const totalMes = facturas?.filter(f => {
+    const fecha = f.fecha && new Date(f.fecha);
+    return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
+  }).reduce((sum, f) => sum + f.total, 0) || 0;
   
-  const igicMes = facturas?.filter(f => 
-    f.fecha && new Date(f.fecha) >= firstDayOfMonth
-  ).reduce((sum, f) => sum + f.igic, 0) || 0;
+  const igicMes = facturas?.filter(f => {
+    const fecha = f.fecha && new Date(f.fecha);
+    return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
+  }).reduce((sum, f) => sum + f.igic, 0) || 0;
   
-  const numFacturasMes = facturas?.filter(f => 
-    f.fecha && new Date(f.fecha) >= firstDayOfMonth
-  ).length || 0;
+  const numFacturasMes = facturas?.filter(f => {
+    const fecha = f.fecha && new Date(f.fecha);
+    return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
+  }).length || 0;
 
   return (
     <div className="space-y-6">

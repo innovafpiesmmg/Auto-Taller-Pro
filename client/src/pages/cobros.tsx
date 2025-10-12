@@ -21,10 +21,12 @@ export default function Cobros() {
 
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   
-  const cobrosHoy = cobros?.filter(c => 
-    c.fecha && new Date(c.fecha) >= startOfDay
-  ) || [];
+  const cobrosHoy = cobros?.filter(c => {
+    const fecha = c.fecha && new Date(c.fecha);
+    return fecha && fecha >= startOfDay && fecha < startOfTomorrow;
+  }) || [];
   
   const efectivoHoy = cobrosHoy.filter(c => c.metodoPago === 'efectivo').reduce((sum, c) => sum + c.importe, 0);
   const tarjetaHoy = cobrosHoy.filter(c => c.metodoPago === 'tarjeta').reduce((sum, c) => sum + c.importe, 0);

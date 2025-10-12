@@ -21,17 +21,17 @@ export default function Presupuestos() {
 
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const firstDayNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   
   const pendientes = presupuestos?.filter(p => p.estado === 'pendiente').length || 0;
-  const aprobadosMes = presupuestos?.filter(p => 
-    p.estado === 'aprobado' && 
-    p.fechaCreacion && 
-    new Date(p.fechaCreacion) >= firstDayOfMonth
-  ).length || 0;
-  const totalMes = presupuestos?.filter(p => 
-    p.fechaCreacion && 
-    new Date(p.fechaCreacion) >= firstDayOfMonth
-  ).reduce((sum, p) => sum + p.total, 0) || 0;
+  const aprobadosMes = presupuestos?.filter(p => {
+    const fecha = p.fechaCreacion && new Date(p.fechaCreacion);
+    return p.estado === 'aprobado' && fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
+  }).length || 0;
+  const totalMes = presupuestos?.filter(p => {
+    const fecha = p.fechaCreacion && new Date(p.fechaCreacion);
+    return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
+  }).reduce((sum, p) => sum + p.total, 0) || 0;
 
   return (
     <div className="space-y-6">
