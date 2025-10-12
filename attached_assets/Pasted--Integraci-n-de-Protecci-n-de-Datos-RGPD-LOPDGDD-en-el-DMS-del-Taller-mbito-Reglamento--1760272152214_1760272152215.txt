@@ -1,0 +1,221 @@
+# Integración de Protección de Datos (RGPD/LOPDGDD) en el DMS del Taller
+
+**Ámbito:** Reglamento (UE) 2016/679 (RGPD), Ley Orgánica 3/2018 (LOPDGDD), normativa española aplicable.
+**Fecha:** 12/10/2025
+
+---
+
+## 1) Principios y alcance
+
+* **Licitud, lealtad, transparencia:** información clara en el momento de la recogida (capas informativas, política de privacidad).
+* **Limitación de la finalidad:** solo para gestión de taller, obligaciones legales, y marketing **si** hay consentimiento.
+* **Minimización de datos:** datos estrictamente necesarios (cliente, vehículo, contacto, OR, facturación).
+* **Exactitud:** mecanismos de actualización.
+* **Limitación del plazo:** políticas de conservación y borrado (ver §7).
+* **Integridad y confidencialidad:** medidas técnicas y organizativas (ver §8).
+* **Responsabilidad proactiva:** registros, DPIA cuando proceda, evidencias de cumplimiento.
+
+---
+
+## 2) Bases jurídicas y tratamientos
+
+**2.1 Tratamientos principales**
+
+* **Gestión contractual** (presupuestos, OR, facturas): **art. 6.1.b RGPD**.
+* **Cumplimiento legal** (contabilidad/tributos, VERI*FACTU, garantías, seguridad): **art. 6.1.c RGPD**.
+* **Interés legítimo** (seguridad del sistema, prevención de fraude, calidad del servicio con NPS agregado): **art. 6.1.f** (previa ponderación).
+* **Consentimiento** (comunicaciones comerciales, WhatsApp Business, cesión de vehículo de sustitución con cláusulas específicas, uso de imágenes): **art. 6.1.a**.
+
+**2.2 Categorías de datos**
+
+* Identificativos (NIF, nombre), contacto, vehículo (matrícula/VIN), imágenes del vehículo, firma digital, facturación.
+* Empleados/técnicos (identificación laboral mínima para asignación de OR).
+* No se tratan **categorías especiales** (art. 9), salvo eventual parte de accidente con datos de salud (evitar registrar detalles innecesarios).
+
+---
+
+## 3) Gobierno y roles
+
+* **Responsable del tratamiento:** titular del taller.
+* **Encargados de tratamiento:** proveedores del DMS, hosting, mensajería (email/SMS/WhatsApp), TPV, almacenamiento de archivos (S3), soporte técnico.
+* **Delegado de Protección de Datos (DPD/DPO):** obligatorio si concurren supuestos LOPDGDD; si no, **punto de contacto** designado.
+* **Registro de Actividades de Tratamiento (RAT):** mantenido en el DMS (ver §10) con exportación PDF.
+
+---
+
+## 4) Módulos y UI de privacidad (funcional)
+
+1. **Consentimientos y preferencias**
+
+   * Registro granular: marketing email/SMS/WhatsApp, llamadas, encuestas NPS, cookies analíticas.
+   * Prueba de consentimiento (quién, cuándo, desde dónde, versión del texto aceptado).
+   * Revocación simple y trazada.
+
+2. **Capas informativas**
+
+   * En formularios de alta de cliente/cita y contrato de vehículo de sustitución.
+   * Enlace a texto completo (política de privacidad) versionado.
+
+3. **Derechos de los interesados (DSR)**
+
+   * Portal interno para: acceso, rectificación, supresión, oposición, limitación, portabilidad.
+   * Plazos y flujos de resolución (alertas, estados, evidencia documental).
+
+4. **Retención y borrado**
+
+   * Motor de políticas por entidad (clientes, OR, fotos, facturas, consentimientos, logs) con reglas automáticas y manuales.
+
+5. **Gestión de incidentes/brechas**
+
+   * Registro, clasificación de gravedad, medidas, evaluación de riesgo, notificación a AEPD/interesados (plantillas).
+
+6. **Contratos con encargados (DPA)**
+
+   * Repositorio de contratos, control de caducidad, cláusulas tipo y check de **transferencias internacionales** (art. 46).
+
+7. **Auditoría & logs**
+
+   * Trazabilidad por dato sensible: quién accede, qué cambia, cuándo.
+
+8. **Privacidad en VERI*FACTU**
+
+   * Etiquetado y minimización en registros enviados; retención/acceso conforme a ley.
+
+---
+
+## 5) Experiencia de usuario (puntos de captura)
+
+* **Cita/Registro cliente:** check de consentimientos (desmarcados por defecto salvo lo estrictamente necesario), enlace a política y a RAT resumen.
+* **Recepción activa:** firma digital de autorizaciones (OR, tratamiento de datos, cesión vehículo, fotos 360º).
+* **Portal del cliente (opcional):** consulta de datos, descarga de facturas, actualización de preferencias.
+
+---
+
+## 6) Modelo de datos (extensiones RGPD)
+
+**Tabla `consentimientos`**: `id`, `cliente_id`, `tipo` (EMAIL|SMS|WA|MARKETING|NPS|COOKIES_AN|… ), `estado` (OTORGADO|REVOCADO), `fecha`, `ip`, `user_agent`, `version_texto`, `origen` (web|recepcion|llamada), `prueba_pdf_url`.
+
+**Tabla `rat_registros`** (Registro de Actividades): `id`, `tratamiento`, `finalidad`, `base_legal`, `categorias_datos`, `colectivos`, `destinatarios`, `transferencias`, `plazos_supresion`, `medidas_seguridad`, `responsable`, `encargados`, `ultima_revision`.
+
+**Tabla `dsr_solicitudes`**: `id`, `interesado_id`, `tipo` (ARCO-POL), `fecha`, `estado` (RECIBIDA|EN_CURSO|RESUELTA|DENEGADA), `plazo_max`, `respuesta_pdf`, `observaciones`.
+
+**Tabla `retencion_politicas`**: `id`, `entidad` (FACTURA|OR|FOTO|CLIENTE|LOG), `plazo` (años/días), `base_legal`, `accion` (ANONIMIZAR|SUPRIMIR|ARCHIVAR), `ultima_ejecucion`.
+
+**Tabla `brechas_seguridad`**: `id`, `fecha`, `descripcion`, `datos_afectados`, `riesgo`, `notificada_aepd` (bool), `fecha_notificacion`, `medidas_aplicadas`, `causa`, `evidencias_url`.
+
+**Tabla `encargados`**: `id`, `nombre`, `nif`, `pais`, `transferencia_intl` (SI/NO), `base_transferencia` (SCC|ADECUACION|EXCEPCION), `contrato_url`, `caducidad`.
+
+**Tabla `politicas_privacidad`**: `id`, `version`, `texto_md`, `fecha_publicacion`, `enlace_publico`.
+
+---
+
+## 7) Conservación y supresión (plazos orientativos)
+
+* **Facturas y contabilidad:** 6 años (Código de Comercio) y 4 años (Tributos). Acción: **archivar**, no suprimir.
+* **OR y presupuestos:** mientras dure la relación + 5 años por posibles responsabilidades.
+* **Imágenes/fotos 360º de vehículos:** 1 año salvo litigios/garantías.
+* **Consentimientos:** mientras estén vigentes y 5 años como **evidencia** tras revocación.
+* **Logs de acceso:** 2 años (seguridad y auditoría).
+
+> Los plazos deben ser validados por asesoría legal y pueden variar por normativa sectorial/seguro.
+
+---
+
+## 8) Medidas técnicas y organizativas (TOMs)
+
+* **Control de acceso:** RBAC, mínimo privilegio, MFA para roles críticos, bloqueo por inactividad.
+* **Autenticación y sesiones:** JWT con rotación, expiración corta; opciones SSO (OIDC) para empresas.
+* **Cifrado:** en tránsito (TLS 1.3), en reposo (AES‑256 para BBDD/objetos), claves gestionadas (KMS) y rotación anual.
+* **Seudonimización/anonimización:** para analítica y pruebas (dataset desensibilizado).
+* **Backups:** cifrados, prueba de restauración, retención diferenciada.
+* **Registro de actividad:** logs firmados y sellados en tiempo (hash en cadena), alertas SIEM.
+* **Hardening:** CSP, rate limiting, WAF, escáner SCA/DAST, seguridad de contenedores.
+* **Gestión de vulnerabilidades:** parches, dependabot, auditorías periódicas.
+* **Portabilidad:** export JSON/CSV y PDF firmados de la respuesta al interesado.
+
+---
+
+## 9) Integraciones y terceros
+
+* **Email/SMS/WhatsApp:** contratos de encargado, ubicación de datos y transferencias.
+* **TPV / pasarelas:** cumplimiento PCI DSS (si aplica) y tokenización.
+* **Almacenamiento de documentos:** S3 compatible en UE; control de ciclo de vida (expiración de objetos sensibles).
+* **BI/analítica:** datos agregados y anonimizados; evitar IDs personales en herramientas externas.
+
+---
+
+## 10) Registro de Actividades de Tratamiento (RAT) dentro del DMS
+
+* Editor con plantillas para tratamientos típicos (gestión clientes, facturación, marketing, garantías, RRHH básico si aplica).
+* Exportación a **PDF firmado** y versión de consulta para mostrar al interesado (transparencia proactiva).
+
+---
+
+## 11) Evaluación de Impacto (DPIA/EIPD) — motor y plantillas
+
+* Cuestionario basado en guías AEPD: naturaleza, alcance, contexto, fines, evaluación de necesidad/proporcionalidad, riesgos y medidas.
+* Disparadores: introducción de nuevas tecnologías (IoT contenedores, reconocimiento de matrículas OCR, tratamiento masivo de imágenes), uso de perfiles, transferencias internacionales.
+* Workflow de aprobación interna, revisión periódica.
+
+---
+
+## 12) API y endpoints (ejemplos)
+
+* `POST /rgpd/consentimientos` — registrar/actualizar consentimiento (con metadatos de prueba).
+* `GET /rgpd/consentimientos?cliente_id=` — consulta.
+* `POST /rgpd/dsr` — alta de solicitud de derechos.
+* `PATCH /rgpd/dsr/{id}` — resolver/adjuntar respuesta.
+* `GET /rgpd/rat` — listar tratamientos; `POST /rgpd/rat` — alta/edición.
+* `POST /rgpd/brechas` — registrar incidente; `POST /rgpd/brechas/{id}/notificar`.
+* `POST /rgpd/retencion/ejecutar` — job de limpieza/anonimización.
+
+---
+
+## 13) UI/UX (patrones)
+
+* **Banner de privacidad** en el primer alta (cita/cliente) con capa informativa.
+* **Centro de privacidad** accesible desde el perfil del cliente.
+* **Etiquetas** visibles de consentimiento (chips) en ficha de cliente.
+* **Alertas** de caducidad de contratos con encargados y políticas pendientes de revisión.
+
+---
+
+## 14) Formación y documentación
+
+* Manual operativo para recepción/administración (qué datos pedir, cómo informar, qué marcar).
+* Guía de respuesta a derechos del interesado (plazos, plantillas).
+* Procedimiento de brechas (RACI, tiempos, responsables).
+
+---
+
+## 15) Roadmap de implantación
+
+* **Sprint A:** Modelo de datos RGPD + UI de consentimientos + RAT.
+* **Sprint B:** Portal DSR + políticas de retención + trabajos programados.
+* **Sprint C:** Brechas + DPA repository + auditoría avanzada.
+* **Sprint D:** DPIA engine + reporting y export firmada + formación.
+
+---
+
+## 16) Métricas de cumplimiento (KPIs)
+
+* % clientes con consentimientos correctamente registrados.
+* Tasa de resolución de DSR en < 30 días.
+* % políticas de retención ejecutadas mensualmente.
+* Nº de accesos a datos sensibles por rol (tendencia decreciente).
+* Tiempo medio de detección y contención de incidentes.
+
+---
+
+## 17) Anexos
+
+* **A. Plantillas de texto** (capa básica y completa de información).
+* **B. Matriz de retención** (editable) por entidad.
+* **C. Matriz de riesgos** para DPIA.
+* **D. Cláusulas DPA y transferencias internacionales (SCC).**
+
+---
+
+### Conclusión
+
+El DMS integrará la protección de datos **de extremo a extremo**, desde la recogida de datos (citas/recepción) hasta la supresión/anonimización, habilitando trazabilidad, evidencias y automatismos para un **cumplimiento real y operativo**, sin fricciones en el día a día del taller.

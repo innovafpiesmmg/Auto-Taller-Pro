@@ -58,6 +58,20 @@ Sistema DMS (Dealer Management System) completo para talleres mecánicos de auto
    - Arqueo de caja
    - Vinculación con facturas
 
+10. **CRM Postventa**
+   - Campañas automatizadas (ITV, revisión, cumpleaños)
+   - Encuestas de satisfacción (NPS/CSAT)
+   - Sistema de cupones y promociones
+   - Gestión de estado de campañas (activa, programada, finalizada, pausada)
+
+11. **Gestión de Residuos** (Ley 22/2011 + Canarias)
+   - Catálogo de residuos según LER (peligrosos/no peligrosos)
+   - Gestión de contenedores con capacidad y estado
+   - Registro de gestores autorizados (NIMA)
+   - Registro de generación vinculado a OR
+   - Documentos de Identificación (DI) para traslado
+   - Control de recogidas y trazabilidad completa
+
 ### Autenticación y Roles
 - Sistema JWT con control de acceso basado en roles (RBAC)
 - Roles disponibles: Admin, Jefe Taller, Recepción, Mecánico, Almacén, Finanzas
@@ -198,6 +212,46 @@ Todos los endpoints están protegidos con autenticación JWT y control de acceso
 ### Dashboard
 - `GET /api/stats/dashboard` - Estadísticas del dashboard
 
+### CRM Postventa
+- `GET /api/campanas` - Listar campañas
+- `POST /api/campanas` - Crear campaña
+- `PUT /api/campanas/:id` - Actualizar campaña
+- `DELETE /api/campanas/:id` - Eliminar campaña
+- `GET /api/encuestas` - Listar encuestas
+- `POST /api/encuestas` - Crear encuesta
+- `PUT /api/encuestas/:id` - Actualizar encuesta
+- `DELETE /api/encuestas/:id` - Eliminar encuesta
+- `GET /api/cupones` - Listar cupones
+- `POST /api/cupones` - Crear cupón
+- `PUT /api/cupones/:id` - Actualizar cupón
+- `DELETE /api/cupones/:id` - Eliminar cupón
+
+### Gestión de Residuos
+- `GET /api/catalogo-residuos` - Listar catálogo de residuos
+- `POST /api/catalogo-residuos` - Crear entrada en catálogo
+- `PUT /api/catalogo-residuos/:id` - Actualizar entrada
+- `DELETE /api/catalogo-residuos/:id` - Eliminar entrada
+- `GET /api/contenedores-residuos` - Listar contenedores
+- `POST /api/contenedores-residuos` - Crear contenedor
+- `PUT /api/contenedores-residuos/:id` - Actualizar contenedor
+- `DELETE /api/contenedores-residuos/:id` - Eliminar contenedor
+- `GET /api/gestores-residuos` - Listar gestores autorizados
+- `POST /api/gestores-residuos` - Crear gestor
+- `PUT /api/gestores-residuos/:id` - Actualizar gestor
+- `DELETE /api/gestores-residuos/:id` - Eliminar gestor
+- `GET /api/registros-residuos` - Listar registros de generación
+- `POST /api/registros-residuos` - Crear registro
+- `PUT /api/registros-residuos/:id` - Actualizar registro
+- `DELETE /api/registros-residuos/:id` - Eliminar registro
+- `GET /api/documentos-di` - Listar documentos DI
+- `POST /api/documentos-di` - Crear documento DI
+- `PUT /api/documentos-di/:id` - Actualizar documento DI
+- `DELETE /api/documentos-di/:id` - Eliminar documento DI
+- `GET /api/recogidas-residuos` - Listar recogidas
+- `POST /api/recogidas-residuos` - Crear recogida
+- `PUT /api/recogidas-residuos/:id` - Actualizar recogida
+- `DELETE /api/recogidas-residuos/:id` - Eliminar recogida
+
 ## Base de Datos
 
 ### Tablas Principales
@@ -213,6 +267,15 @@ Todos los endpoints están protegidos con autenticación JWT y control de acceso
 - `facturas` - Facturas
 - `lineas_factura` - Líneas de factura
 - `cobros` - Cobros/pagos
+- `campanas` - Campañas de marketing
+- `encuestas` - Encuestas de satisfacción
+- `cupones` - Cupones y promociones
+- `catalogo_residuos` - Catálogo de residuos LER
+- `contenedores_residuos` - Contenedores de almacenamiento
+- `gestores_residuos` - Gestores autorizados NIMA
+- `registros_residuos` - Registros de generación
+- `documentos_di` - Documentos de Identificación
+- `recogidas_residuos` - Recogidas y traslados
 
 ### Comandos DB
 ```bash
