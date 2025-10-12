@@ -897,6 +897,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/campanas/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCampana(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // CRM Postventa - Encuestas
   app.get("/api/encuestas", authenticateToken, async (req, res) => {
     try {
@@ -944,6 +954,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/encuestas/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteEncuesta(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // CRM Postventa - Respuestas de Encuestas
   app.get("/api/respuestas-encuestas", authenticateToken, async (req, res) => {
     try {
@@ -965,6 +985,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(respuesta);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/respuestas-encuestas/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRespuestaEncuesta(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -1029,6 +1059,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(cupon);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/cupones/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCupon(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

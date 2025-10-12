@@ -173,16 +173,19 @@ export interface IStorage {
   getCampana(id: number): Promise<Campana | undefined>;
   createCampana(campana: InsertCampana): Promise<Campana>;
   updateCampana(id: number, campana: Partial<InsertCampana>): Promise<Campana | undefined>;
+  deleteCampana(id: number): Promise<void>;
   
   // CRM Postventa - Encuestas
   getEncuestas(): Promise<Encuesta[]>;
   getEncuesta(id: number): Promise<Encuesta | undefined>;
   createEncuesta(encuesta: InsertEncuesta): Promise<Encuesta>;
   updateEncuesta(id: number, encuesta: Partial<InsertEncuesta>): Promise<Encuesta | undefined>;
+  deleteEncuesta(id: number): Promise<void>;
   
   // CRM Postventa - Respuestas de Encuestas
   getRespuestasEncuestas(encuestaId?: number, clienteId?: number): Promise<RespuestaEncuesta[]>;
   createRespuestaEncuesta(respuesta: InsertRespuestaEncuesta): Promise<RespuestaEncuesta>;
+  deleteRespuestaEncuesta(id: number): Promise<void>;
   
   // CRM Postventa - Cupones
   getCupones(clienteId?: number, estado?: string): Promise<Cupon[]>;
@@ -190,6 +193,7 @@ export interface IStorage {
   getCuponByCodigo(codigo: string): Promise<Cupon | undefined>;
   createCupon(cupon: InsertCupon): Promise<Cupon>;
   updateCupon(id: number, cupon: Partial<InsertCupon>): Promise<Cupon | undefined>;
+  deleteCupon(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -630,6 +634,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteCampana(id: number): Promise<void> {
+    await db.delete(campanas).where(eq(campanas.id, id));
+  }
+
   // CRM Postventa - Encuestas
   async getEncuestas(): Promise<Encuesta[]> {
     return await db.select().from(encuestas).orderBy(desc(encuestas.createdAt));
@@ -654,6 +662,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteEncuesta(id: number): Promise<void> {
+    await db.delete(encuestas).where(eq(encuestas.id, id));
+  }
+
   // CRM Postventa - Respuestas de Encuestas
   async getRespuestasEncuestas(encuestaId?: number, clienteId?: number): Promise<RespuestaEncuesta[]> {
     const conditions = [];
@@ -669,6 +681,10 @@ export class DatabaseStorage implements IStorage {
   async createRespuestaEncuesta(respuesta: InsertRespuestaEncuesta): Promise<RespuestaEncuesta> {
     const [newRespuesta] = await db.insert(respuestasEncuestas).values(respuesta).returning();
     return newRespuesta;
+  }
+
+  async deleteRespuestaEncuesta(id: number): Promise<void> {
+    await db.delete(respuestasEncuestas).where(eq(respuestasEncuestas.id, id));
   }
 
   // CRM Postventa - Cupones
@@ -705,6 +721,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cupones.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deleteCupon(id: number): Promise<void> {
+    await db.delete(cupones).where(eq(cupones.id, id));
   }
 }
 
