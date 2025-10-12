@@ -1,351 +1,88 @@
 # DMS Taller Mecánico - Sistema Integral de Gestión
 
-## Visión General
-Sistema DMS (Dealer Management System) completo para talleres mecánicos de automoción, diseñado específicamente para Canarias con cumplimiento IGIC. El sistema cubre todo el ciclo de vida del servicio: gestión de citas, recepción activa, presupuestos, órdenes de reparación, almacén, facturación y cobros.
+## Overview
+DMS (Dealer Management System) for automotive repair shops, specifically designed for the Canary Islands, complying with IGIC tax regulations. The system manages the entire service lifecycle: appointment scheduling, active reception, quotes, repair orders, inventory, invoicing, payments, CRM, waste management, and purchasing. Its goal is to optimize workshop operations, improve customer satisfaction, and ensure regulatory compliance.
 
-## Características Principales
+## User Preferences
+I want iterative development.
+I prefer detailed explanations.
+Ask before making major changes.
 
-### Módulos Implementados (MVP)
-1. **Dashboard**: Vista general con KPIs en tiempo real
-   - OR abiertas
-   - Citas del día
-   - Ingresos del día
-   - Ocupación del taller
-   - Estadísticas de clientes y vehículos
+## Recent Changes (Latest)
+### 2025-10-12: Módulo Compras & Almacén COMPLETADO
+- ✅ Implementado CRUD completo para 4 páginas: Proveedores, Pedidos de Compra, Recepciones, Ubicaciones
+- ✅ Corregidos 4 bugs críticos:
+  - Agregados endpoints DELETE faltantes (devuelven 204 No Content)
+  - apiRequest ahora maneja 204 correctamente sin parsear JSON
+  - Backend convierte fechas ISO string a Date en POST/PUT
+  - Cache invalidation corregido (removidos filtros de queryKey, filtrado movido al cliente)
+- ✅ Testing e2e completo verificado por arquitecto
+- ✅ UX optimizada con toasts, confirmaciones AlertDialog, y data-testid completos
 
-2. **Gestión de Clientes**
-   - Registro de clientes particulares y empresas
-   - Búsqueda por NIF, nombre, email, teléfono
-   - Gestión de datos RGPD
+## System Architecture
+The system uses a modern full-stack architecture. The frontend is built with **React 18, TypeScript, Vite, Tailwind CSS (with shadcn/ui), React Query, Wouter, React Hook Form, Zod, date-fns, and Lucide React**. The backend is powered by **Node.js, Express, TypeScript, PostgreSQL (Neon), Drizzle ORM, JWT, bcrypt, and Zod**.
 
-3. **Gestión de Vehículos**
-   - Registro completo (matrícula, VIN, marca, modelo)
-   - Vinculación con clientes
-   - Historial de kilómetros e ITV
+**UI/UX Decisions:**
+- **Color Scheme**: "Professional Blue" (`217 91% 60%`) is used as the primary color, conveying trust and reliability. Other semantic colors include Green for success, Amber for warnings, and Red for destructive actions.
+- **Design Features**: Full dark mode, responsive design (desktop, tablet, mobile), elevation system for interactions, shadcn/ui components, collapsible sidebar, and Lucide React icons.
+- **Project Structure**:
+    - `client/`: Frontend application.
+    - `server/`: Backend application, including DB configuration, data layer, API routes, and seeding.
+    - `shared/`: Shared TypeScript types and Zod schemas.
+    - `design_guidelines.md`: Design documentation.
 
-4. **Agenda & Citas**
-   - Calendario mensual visual
-   - Gestión de estados (pendiente, confirmada, en curso, completada, cancelada)
-   - Vinculación con vehículos y clientes
+**Technical Implementations & Feature Specifications:**
+- **Authentication & Roles**: JWT-based authentication with Role-Based Access Control (RBAC). Roles include Admin, Workshop Manager, Reception, Mechanic, Warehouse, and Finance.
+- **Data Validation**: Zod is used for validation on both frontend and backend.
+- **State Management**: React Query for efficient data fetching and caching.
+- **Database**: PostgreSQL with Drizzle ORM for type-safe schema definition and querying.
+- **Core Modules**:
+    - **Dashboard**: Real-time KPIs (open ORs, daily appointments/income, workshop occupancy, customer/vehicle stats).
+    - **Customer & Vehicle Management**: Full CRUD for clients (individual/company, RGPD compliance) and vehicles (plate, VIN, history).
+    - **Calendar & Appointments**: Visual calendar with status management.
+    - **Repair Orders (OR)**: Lifecycle management (Open to Invoiced), work parts, item consumption, reception checklist, digital signature.
+    - **Quotes**: Creation with labor and item lines, approval flow, automatic IGIC calculation.
+    - **Item Catalog**: Reference, stock, cost/sale price, minimum stock control, categorization.
+    - **IGIC Invoicing**: Multiple invoice types (Simplified, Ordinary, Rectifying), configurable IGIC rates per line, series by location.
+    - **Payments & Cash Register**: Multiple payment methods, cash reconciliation, invoice linking.
+    - **After-Sales CRM**: Automated campaigns (ITV, reviews, birthdays), satisfaction surveys (NPS/CSAT), coupon system.
+    - **Waste Management**: Compliance with Ley 22/2011 + Canary Islands regulations, cataloging (LER), container management, authorized waste managers (NIMA), generation logging linked to OR, Identification Documents (DI), collection tracking.
+    - **Purchasing & Warehouse (COMPLETED)**: Full CRUD for suppliers, purchase orders (with status tracking), goods receipts with lines, multi-warehouse location system. Cache invalidation optimized, date handling corrected, DELETE endpoints implemented.
 
-5. **Órdenes de Reparación (OR)**
-   - Estados: Abierta → En curso → A la espera → Terminada → Facturada
-   - Partes de trabajo
-   - Consumo de artículos
-   - Checklist de recepción
-   - Firma digital
+**API Endpoints**: A comprehensive set of RESTful API endpoints for all modules, protected by JWT and RBAC.
 
-6. **Presupuestos**
-   - Creación con líneas de MO y artículos
-   - Aprobación/rechazo
-   - Cálculo automático de IGIC
-   - Vinculación con OR
+## External Dependencies
+- **PostgreSQL (Neon)**: Main database.
+- **JWT (JSON Web Tokens)**: For authentication.
+- **bcrypt**: For password hashing.
+- **Tailwind CSS**: For styling and utility classes.
+- **shadcn/ui**: UI component library.
+- **React Query (TanStack Query)**: For server state management.
+- **Zod**: For data validation.
+- **date-fns**: For date manipulation.
+- **Lucide React**: For icons.
 
-7. **Catálogo de Artículos**
-   - Gestión de referencias y stock
-   - Precio coste y venta
-   - Control de stock mínimo
-   - Categorización
-
-8. **Facturación IGIC**
-   - Tipos: Simplificada, Ordinaria, Rectificativa
-   - IGIC configurable por línea (0%, 3%, 7%, 9.5%, 15%)
-   - Series por sede
-   - Líneas de factura detalladas
-
-9. **Cobros & Caja**
-   - Métodos: Efectivo, Tarjeta, Transferencia, Bizum
-   - Arqueo de caja
-   - Vinculación con facturas
-
-10. **CRM Postventa**
-   - Campañas automatizadas (ITV, revisión, cumpleaños)
-   - Encuestas de satisfacción (NPS/CSAT)
-   - Sistema de cupones y promociones
-   - Gestión de estado de campañas (activa, programada, finalizada, pausada)
-
-11. **Gestión de Residuos** (Ley 22/2011 + Canarias)
-   - Catálogo de residuos según LER (peligrosos/no peligrosos)
-   - Gestión de contenedores con capacidad y estado
-   - Registro de gestores autorizados (NIMA)
-   - Registro de generación vinculado a OR
-   - Documentos de Identificación (DI) para traslado
-   - Control de recogidas y trazabilidad completa
-
-### Autenticación y Roles
-- Sistema JWT con control de acceso basado en roles (RBAC)
-- Roles disponibles: Admin, Jefe Taller, Recepción, Mecánico, Almacén, Finanzas
-- Usuario demo: `admin` / `admin123`
-- Solo administradores pueden crear nuevos usuarios
-- JWT_SECRET obligatorio en variables de entorno (sin fallback inseguro)
-
-## Stack Tecnológico
-
-### Frontend
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS + shadcn/ui
-- React Query (TanStack Query v5)
-- Wouter (routing)
-- React Hook Form + Zod (validación)
-- date-fns (manejo de fechas)
-- Lucide React (iconos)
-
-### Backend
-- Node.js + Express + TypeScript
-- PostgreSQL (Neon)
-- Drizzle ORM
-- JWT (autenticación)
-- bcrypt (hashing)
-- Zod (validación)
-
-## Estructura del Proyecto
-
-```
-├── client/                 # Frontend
-│   ├── src/
-│   │   ├── components/    # Componentes UI
-│   │   │   ├── ui/       # shadcn components
-│   │   │   ├── app-sidebar.tsx
-│   │   │   ├── theme-provider.tsx
-│   │   │   └── theme-toggle.tsx
-│   │   ├── pages/        # Páginas de la aplicación
-│   │   ├── lib/          # Utilidades
-│   │   │   ├── auth.tsx  # Context de autenticación
-│   │   │   ├── api.ts    # Cliente API
-│   │   │   └── queryClient.ts
-│   │   └── App.tsx
-│   └── index.html
-├── server/                # Backend
-│   ├── db.ts            # Configuración DB
-│   ├── storage.ts       # Capa de datos
-│   ├── routes.ts        # Rutas API
-│   ├── seed.ts          # Seed de datos
-│   └── index.ts
-├── shared/               # Tipos compartidos
-│   └── schema.ts        # Esquemas Drizzle + Zod
-└── design_guidelines.md  # Guías de diseño
+## Known Technical Patterns & Fixes
+### apiRequest Pattern (client/src/lib/queryClient.ts)
+```typescript
+// Handles 204 No Content without attempting JSON parsing
+if (res.status === 204 || res.headers.get("content-length") === "0") {
+  return undefined;
+}
+return await res.json();
 ```
 
-## API Endpoints
-
-### Autenticación
-- `POST /api/auth/register` - Registro de usuario (solo Admin)
-- `POST /api/auth/login` - Login (retorna JWT)
-
-### Control de Acceso por Rol
-Todos los endpoints están protegidos con autenticación JWT y control de acceso basado en roles:
-
-**Clientes, Vehículos, Citas:**
-- GET: Admin, Jefe Taller, Recepción, Finanzas (Clientes) / Mecánico (Vehículos)
-- POST/PUT: Admin, Jefe Taller, Recepción
-
-**Órdenes de Reparación:**
-- GET: Admin, Jefe Taller, Recepción, Mecánico
-- POST: Admin, Jefe Taller, Recepción
-- PUT: Admin, Jefe Taller, Recepción, Mecánico
-
-**Artículos/Inventario:**
-- GET: Admin, Jefe Taller, Almacén, Mecánico, Recepción
-- POST/PUT: Admin, Jefe Taller, Almacén
-
-**Presupuestos:**
-- GET: Admin, Jefe Taller, Recepción, Finanzas
-- POST: Admin, Jefe Taller, Recepción
-- Aprobar: Admin, Jefe Taller, Finanzas
-
-**Facturas y Cobros:**
-- Acceso completo: Admin, Jefe Taller, Finanzas
-
-**Dashboard:**
-- GET: Admin, Jefe Taller, Recepción, Finanzas
-
-### Clientes
-- `GET /api/clientes?search=` - Listar/buscar clientes
-- `GET /api/clientes/:id` - Obtener cliente
-- `POST /api/clientes` - Crear cliente
-- `PUT /api/clientes/:id` - Actualizar cliente
-
-### Vehículos
-- `GET /api/vehiculos?search=&clienteId=` - Listar/buscar vehículos
-- `GET /api/vehiculos/:id` - Obtener vehículo
-- `POST /api/vehiculos` - Crear vehículo
-- `PUT /api/vehiculos/:id` - Actualizar vehículo
-
-### Citas
-- `GET /api/citas?from=&to=` - Listar citas
-- `GET /api/citas/:id` - Obtener cita
-- `POST /api/citas` - Crear cita
-- `PUT /api/citas/:id` - Actualizar cita
-
-### Órdenes de Reparación
-- `GET /api/ordenes?estado=` - Listar OR
-- `GET /api/ordenes/:id` - Obtener OR
-- `POST /api/ordenes` - Crear OR
-- `PUT /api/ordenes/:id` - Actualizar OR
-- `GET /api/ordenes/:orId/partes` - Obtener partes de trabajo
-- `POST /api/ordenes/:orId/partes` - Crear parte de trabajo
-- `GET /api/ordenes/:orId/consumos` - Obtener consumos
-- `POST /api/ordenes/:orId/consumos` - Crear consumo
-
-### Artículos
-- `GET /api/articulos?search=` - Listar/buscar artículos
-- `GET /api/articulos/:id` - Obtener artículo
-- `POST /api/articulos` - Crear artículo
-- `PUT /api/articulos/:id` - Actualizar artículo
-
-### Presupuestos
-- `GET /api/presupuestos` - Listar presupuestos
-- `GET /api/presupuestos/:id` - Obtener presupuesto
-- `POST /api/presupuestos` - Crear presupuesto
-- `POST /api/presupuestos/:id/aprobar` - Aprobar presupuesto
-
-### Facturas
-- `GET /api/facturas` - Listar facturas
-- `GET /api/facturas/:id` - Obtener factura con líneas
-- `POST /api/facturas` - Crear factura
-
-### Cobros
-- `GET /api/cobros?facturaId=` - Listar cobros
-- `POST /api/cobros` - Registrar cobro
-
-### Dashboard
-- `GET /api/stats/dashboard` - Estadísticas del dashboard
-
-### CRM Postventa
-- `GET /api/campanas` - Listar campañas
-- `POST /api/campanas` - Crear campaña
-- `PUT /api/campanas/:id` - Actualizar campaña
-- `DELETE /api/campanas/:id` - Eliminar campaña
-- `GET /api/encuestas` - Listar encuestas
-- `POST /api/encuestas` - Crear encuesta
-- `PUT /api/encuestas/:id` - Actualizar encuesta
-- `DELETE /api/encuestas/:id` - Eliminar encuesta
-- `GET /api/cupones` - Listar cupones
-- `POST /api/cupones` - Crear cupón
-- `PUT /api/cupones/:id` - Actualizar cupón
-- `DELETE /api/cupones/:id` - Eliminar cupón
-
-### Gestión de Residuos
-- `GET /api/catalogo-residuos` - Listar catálogo de residuos
-- `POST /api/catalogo-residuos` - Crear entrada en catálogo
-- `PUT /api/catalogo-residuos/:id` - Actualizar entrada
-- `DELETE /api/catalogo-residuos/:id` - Eliminar entrada
-- `GET /api/contenedores-residuos` - Listar contenedores
-- `POST /api/contenedores-residuos` - Crear contenedor
-- `PUT /api/contenedores-residuos/:id` - Actualizar contenedor
-- `DELETE /api/contenedores-residuos/:id` - Eliminar contenedor
-- `GET /api/gestores-residuos` - Listar gestores autorizados
-- `POST /api/gestores-residuos` - Crear gestor
-- `PUT /api/gestores-residuos/:id` - Actualizar gestor
-- `DELETE /api/gestores-residuos/:id` - Eliminar gestor
-- `GET /api/registros-residuos` - Listar registros de generación
-- `POST /api/registros-residuos` - Crear registro
-- `PUT /api/registros-residuos/:id` - Actualizar registro
-- `DELETE /api/registros-residuos/:id` - Eliminar registro
-- `GET /api/documentos-di` - Listar documentos DI
-- `POST /api/documentos-di` - Crear documento DI
-- `PUT /api/documentos-di/:id` - Actualizar documento DI
-- `DELETE /api/documentos-di/:id` - Eliminar documento DI
-- `GET /api/recogidas-residuos` - Listar recogidas
-- `POST /api/recogidas-residuos` - Crear recogida
-- `PUT /api/recogidas-residuos/:id` - Actualizar recogida
-- `DELETE /api/recogidas-residuos/:id` - Eliminar recogida
-
-## Base de Datos
-
-### Tablas Principales
-- `users` - Usuarios del sistema
-- `clientes` - Clientes del taller
-- `vehiculos` - Vehículos de clientes
-- `citas` - Citas programadas
-- `ordenes_reparacion` - Órdenes de reparación
-- `partes_trabajo` - Partes de trabajo de OR
-- `articulos` - Catálogo de artículos/recambios
-- `consumos_articulos` - Consumos de artículos en OR
-- `presupuestos` - Presupuestos
-- `facturas` - Facturas
-- `lineas_factura` - Líneas de factura
-- `cobros` - Cobros/pagos
-- `campanas` - Campañas de marketing
-- `encuestas` - Encuestas de satisfacción
-- `cupones` - Cupones y promociones
-- `catalogo_residuos` - Catálogo de residuos LER
-- `contenedores_residuos` - Contenedores de almacenamiento
-- `gestores_residuos` - Gestores autorizados NIMA
-- `registros_residuos` - Registros de generación
-- `documentos_di` - Documentos de Identificación
-- `recogidas_residuos` - Recogidas y traslados
-
-### Comandos DB
-```bash
-npm run db:push          # Sincronizar esquema con DB
-npx tsx server/seed.ts   # Poblar datos iniciales
+### Date Handling Pattern (server/routes.ts)
+```typescript
+// Convert ISO string dates to Date objects before validation
+const data = { ...req.body };
+if (data.fecha && typeof data.fecha === 'string') {
+  data.fecha = new Date(data.fecha);
+}
+const validated = insertSchema.parse(data);
 ```
 
-## Diseño y UI
-
-### Sistema de Colores (Professional Blue)
-- **Primary**: `217 91% 60%` - Azul profesional (confianza, confiabilidad)
-- **Success**: `142 76% 36%` - Verde (terminada, aprobaciones)
-- **Warning**: `38 92% 50%` - Ámbar (a la espera, stock bajo)
-- **Destructive**: `0 84% 60%` - Rojo (errores, cancelaciones)
-
-### Características de Diseño
-- Dark mode completo
-- Responsive (desktop, tablet, mobile)
-- Sistema de elevación para interacciones (hover-elevate, active-elevate-2)
-- Componentes shadcn/ui
-- Sidebar collapsible
-- Iconos Lucide React
-
-## Próximas Fases
-
-### Fase 2 - Almacén y Compras
-- Pedidos a proveedores
-- Recepciones
-- Inventario cíclico
-- Ubicaciones multialmacén
-
-### Fase 3 - CRM Avanzado
-- Campañas automáticas (ITV, revisiones)
-- NPS/CSAT post servicio
-- Cupones y promociones
-
-### Fase 4 - Integraciones
-- TPV Redsys
-- Remesas SEPA (XML CSB19.14)
-- WhatsApp Business (confirmaciones)
-- Exportación contable
-
-### Fase 5 - Analítica BI
-- Informes de margen por OR
-- Rotación de stock
-- Productividad por técnico
-- Export a Power BI/Excel
-
-## Comandos Útiles
-
-```bash
-npm run dev              # Desarrollo
-npm run build            # Build producción
-npm run start            # Iniciar producción
-npm run check            # Verificar tipos
-npm run db:push          # Migrar DB
-npx tsx server/seed.ts   # Seed DB
-```
-
-## Datos de Prueba
-- Usuario: `admin`
-- Contraseña: `admin123`
-- Cliente demo: Juan García Pérez (NIF: 12345678A)
-- Vehículo demo: Toyota Corolla 1.8 Hybrid (1234ABC)
-
-## Notas de Desarrollo
-- Autenticación JWT con roles
-- Validación Zod en frontend y backend
-- React Query para data fetching
-- Estados de carga con Skeleton
-- Manejo de errores con toast notifications
-- Database storage con Drizzle ORM
-- Responsive design mobile-first
+### Cache Invalidation Pattern
+- Use stable queryKeys without filters: `["/api/resource"]`
+- Apply filters on the client side after data fetch
+- This ensures proper cache invalidation after mutations
