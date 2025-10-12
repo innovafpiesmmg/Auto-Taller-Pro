@@ -1,0 +1,152 @@
+# Integración VERI*FACTU — Diseño técnico para el DMS de Taller (IGIC)
+
+**Alcance:** Adecuación del módulo de facturación del DMS para cumplimiento del **RRSIF (RD 1007/2023)** y su modificación por **RD 254/2025**, con soporte de remisión voluntaria de registros **VERI*FACTU**, QR de cotejo, hash encadenado, firma y conservación de registros.
+**Fecha:** 12/10/2025
+
+---
+
+## 1) Objetivos y decisiones
+
+* Emisión conforme a RRSIF, con **registros de facturación** generados y conservados.
+* **Modo VERI*FACTU activo** (remisión voluntaria online) + **modo desconectado** con envío diferido.
+* Compatibilidad **IGIC** (tipos 0/3/7/9.5/15…), facturas **ordinarias/simplificadas/rectificativas** y **suplidos**.
+* Soporte **firma electrónica** (certificado cualificado o de sello) y **hash encadenado** por secuencia.
+* Inclusión de **QR** y **leyenda VERI*FACTU** en la factura impresa/PDF.
+
+---
+
+## 2) Flujos operativos
+
+### 2.1 Emisión VERI*FACTU en tiempo real
+
+1. Generar **registro de facturación** (RF) a partir de la factura (FS/F/FR).
+2. Calcular **huella (hash)** y **encadenamiento** con el RF anterior de la misma serie/dispositivo.
+3. **Firmar** RF y (opcional) registro de evento.
+4. Enviar a **AEAT** (servicio web VERI*FACTU); recibir **acuse** y **código de verificación**.
+5. Incrustar en la factura **QR de cotejo** + **leyenda** + (opcional) CSV de cotejo.
+6. Persistir RF, acuse, estados y sellos de tiempo.
+
+### 2.2 Emisión sin conexión
+
+* Generar y firmar RF localmente → almacenar en cola cifrada.
+* Reintento automático y **bloqueo** si excede umbral de retraso configurable.
+
+### 2.3 Rectificativas y anulaciones
+
+* RF de **rectificativa** referencia a factura original.
+* Envío de **registro de evento** según especificaciones.
+
+---
+
+## 3) Modelo de datos (extensiones)
+
+**Tabla `facturas`** (añadir): `modo_verifactu` [NONE|ON|OFFLINE], `verifactu_estado` [PENDIENTE|REMISION_OK|REMISION_ERR], `verifactu_qr_url`, `verifactu_csv`, `verifactu_cod_cotejo`, `acuse_xml`, `acuse_fecha`.
+
+**Tabla `verifactu_registros`**: `id`, `factura_id`, `serie`, `numero`, `fecha_emision`, `importe_base`, `importe_impuesto`, `tipo_impuesto` (IGIC/VAT), `huella`, `huella_prev`, `algoritmo` (SHA-256), `firma_xml`, `dispositivo_id`, `secuencia`, `contador_diario`, `xml_enviado`, `xml_respuesta`, `estado`, `intentos`, `ultimo_error`.
+
+**Tabla `verifactu_eventos`**: `id`, `factura_id`, `tipo_evento` (anulación, rectificativa…), `fecha`, `xml_enviado`, `respuesta`, `estado`.
+
+**Tabla `dispositivos`**: `id`, `descripcion`, `nif_emisor`, `software_id`, `uuid`, `cert_alias`, `cert_expira`, `contador_diario`.
+
+---
+
+## 4) Cálculo de la **huella (hash)** y encadenado
+
+* Algoritmo **SHA‑256** sobre campos obligatorios del RF + `huella_prev` para **encadenamiento**.
+* Normalización previa (espacios, decimales, codificación UTF‑8) y ordenación de campos según **Diseño de registro**.
+* Guardar `huella` y `huella_prev` por **serie/dispositivo**.
+
+---
+
+## 5) Firma electrónica
+
+* Firma **XAdES‑BES** (o la indicada) sobre el XML del RF y eventos.
+* Almacenamiento de certificados en **HSM/Almacén seguro** (servidor) o **dispositivo** (si terminal autónomo).
+* Rotación y alerta por caducidad; soporte **sello electrónico**.
+
+---
+
+## 6) Remisión a AEAT (servicios web)
+
+* Cliente **SOAP** (WSDL oficial) con TLS mTLS.
+* Endpoints: **alta RF**, **consulta**, **baja/corrección**, **envío eventos**.
+* Reintentos exponenciales, manejo de **códigos de error/validaciones** y almacenamiento de **acuse**.
+
+---
+
+## 7) QR de cotejo y leyenda en factura
+
+* Generar **QR** con la URL de cotejo y parámetros requeridos.
+* Incluir en PDF/impreso: **QR**, **CSV/código de cotejo** y la **leyenda VERI*FACTU**.
+* Ubicación: pie de factura a la derecha; tamaño mínimo 25 mm (configurable).
+
+---
+
+## 8) UI/UX
+
+* Estado VERI*FACTU visible en listados (chips: pendiente, enviado, error).
+* Panel de **cola de envíos** con filtros y reintentos manuales.
+* Visor del **acuse** y del **XML** enviado/respuesta.
+* Asistente de **pruebas** (modo sandbox AEAT) por serie/dispositivo.
+
+---
+
+## 9) Seguridad, auditoría y logs
+
+* **Registro de eventos**: quién emitió, cuándo, desde qué dispositivo.
+* **Inmutabilidad** de RF (bloqueo de edición tras emisión).
+* Logs firmados y **sellados en tiempo** para auditoría.
+
+---
+
+## 10) Casuística IGIC/Canarias
+
+* Soportar **tipos IGIC** por línea (MO, recambios, suplidos) y **exenciones**.
+* Mapear en RF los campos de impuesto según RRSIF (VAT/IGIC). El cálculo no se altera por VERI*FACTU.
+
+---
+
+## 11) Pruebas e implantación
+
+* **Entorno de pruebas AEAT**: credenciales y certificados de ensayo.
+* Batería de casos: factura ordinaria, simplificada, rectificativa, anulación, envío offline diferido, error de validación, QR/cotejo correcto.
+* **Piloto** por serie/sede; despliegue gradual.
+
+---
+
+## 12) Checklist de Conformidad
+
+1. Diseño de registro mapeado 1:1 con el RF (XML/JSON → XML).
+2. Cálculo de hash y encadenamiento probado con dataset de la AEAT.
+3. Firma electrónica válida (cadena confiable) y almacenada.
+4. Envío SOAP con WSDL oficial y validación de esquemas.
+5. QR y leyenda presentes en todos los PDFs impresos.
+6. Conservación de RF, acuses y logs ≥ plazos legales.
+7. Gestión de incidencias (reintento, diagnóstico, alertas).
+8. Plan de continuidad offline.
+
+---
+
+## 13) Roadmap técnico (implantación)
+
+* **Sprint 1:** Modelo datos + servicios hash/firma + QR + UI de estados.
+* **Sprint 2:** Cliente SOAP + remisión + manejo de errores + sandbox.
+* **Sprint 3:** Offline/cola + panel de envíos + visor acuses.
+* **Sprint 4:** Rectificativas/eventos + auditoría + políticas de retención.
+* **Sprint 5:** Piloto por sede/serie + documentación y formación.
+
+---
+
+## 14) Artefactos
+
+* **Contrato XSD/WSDL** (versión vigente).
+* **Plantillas XML de RF y Eventos** (ejemplos comentados).
+* **Guía de integración** para backend.
+* **Manual de usuario** (operativo y de incidencias).
+
+---
+
+## 15) Notas
+
+* Los contribuyentes en **SII** pueden estar excluidos de algunas obligaciones RRSIF; el DMS lo parametrizará por NIF.
+* Las Haciendas Forales (TicketBAI/Entrada Única Batuz) tienen requisitos propios; este diseño se centra en AEAT estatal.

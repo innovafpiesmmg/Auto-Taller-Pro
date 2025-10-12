@@ -655,7 +655,10 @@ export const insertMovimientoAlmacenSchema = createInsertSchema(movimientosAlmac
 export const insertCampanaSchema = createInsertSchema(campanas).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEncuestaSchema = createInsertSchema(encuestas).omit({ id: true, createdAt: true });
 export const insertRespuestaEncuestaSchema = createInsertSchema(respuestasEncuestas).omit({ id: true, fecha: true });
-export const insertCuponSchema = createInsertSchema(cupones).omit({ id: true, createdAt: true });
+export const insertCuponSchema = createInsertSchema(cupones).omit({ id: true, createdAt: true }).extend({
+  fechaInicio: z.coerce.date(),
+  fechaExpiracion: z.coerce.date(),
+});
 
 // Types
 export type User = typeof users.$inferSelect;

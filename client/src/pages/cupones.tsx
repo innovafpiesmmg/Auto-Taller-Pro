@@ -58,12 +58,7 @@ export default function Cupones() {
     mutationFn: async (data: any) => {
       return await apiRequest("/api/cupones", {
         method: "POST",
-        body: JSON.stringify({
-          ...data,
-          valorDescuento: data.valorDescuento,
-          fechaInicio: new Date(data.fechaInicio),
-          fechaExpiracion: new Date(data.fechaExpiracion),
-        }),
+        body: JSON.stringify(data),
       });
     },
     onSuccess: () => {
