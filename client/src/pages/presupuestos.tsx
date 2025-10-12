@@ -1,6 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Eye } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,8 +11,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { SelectPresupuesto } from "@shared/schema";
 
 export default function Presupuestos() {
+  const { data: presupuestos, isLoading } = useQuery<SelectPresupuesto[]>({
+    queryKey: ["/api/presupuestos"],
+  });
+
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  
+  const pendientes = presupuestos?.filter(p => p.estado === 'pendiente').length || 0;
+  const aprobadosMes = presupuestos?.filter(p => 
+    p.estado === 'aprobado' && 
+    p.fechaCreacion && 
+    new Date(p.fechaCreacion) >= firstDayOfMonth
+  ).length || 0;
+  const totalMes = presupuestos?.filter(p => 
+    p.fechaCreacion && 
+    new Date(p.fechaCreacion) >= firstDayOfMonth
+  ).reduce((sum, p) => sum + p.total, 0) || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -31,7 +52,9 @@ export default function Presupuestos() {
             <CardTitle className="text-sm font-medium">Pendientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-presupuestos-pendientes">0</div>
+            <div className="text-2xl font-bold" data-testid="text-presupuestos-pendientes">
+              {isLoading ? <Skeleton className="h-8 w-12" /> : pendientes}
+            </div>
             <p className="text-xs text-muted-foreground">
               Esperando aprobación
             </p>
@@ -43,7 +66,9 @@ export default function Presupuestos() {
             <CardTitle className="text-sm font-medium">Aprobados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-presupuestos-aprobados">0</div>
+            <div className="text-2xl font-bold" data-testid="text-presupuestos-aprobados">
+              {isLoading ? <Skeleton className="h-8 w-12" /> : aprobadosMes}
+            </div>
             <p className="text-xs text-muted-foreground">
               Este mes
             </p>
@@ -55,7 +80,9 @@ export default function Presupuestos() {
             <CardTitle className="text-sm font-medium">Total Mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-total-presupuestos-mes">0,00 €</div>
+            <div className="text-2xl font-bold" data-testid="text-total-presupuestos-mes">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : `${totalMes.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
+            </div>
             <p className="text-xs text-muted-foreground">
               En presupuestos
             </p>
@@ -82,17 +109,57 @@ export default function Presupuestos() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <FileText className="h-12 w-12 mb-2 opacity-50" />
-                      <p>No hay presupuestos creados</p>
-                      <Button variant="link" className="mt-2" data-testid="button-crear-primer-presupuesto">
-                        Crear el primer presupuesto
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : !presupuestos || presupuestos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground">
+                        <FileText className="h-12 w-12 mb-2 opacity-50" />
+                        <p>No hay presupuestos creados</p>
+                        <Button variant="link" className="mt-2" data-testid="button-crear-primer-presupuesto">
+                          Crear el primer presupuesto
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  presupuestos.map((presupuesto) => (
+                    <TableRow key={presupuesto.id} data-testid={`row-presupuesto-${presupuesto.id}`}>
+                      <TableCell className="font-medium">P-{presupuesto.id.toString().padStart(5, '0')}</TableCell>
+                      <TableCell>{presupuesto.clienteNombre || '-'}</TableCell>
+                      <TableCell>{presupuesto.vehiculoMatricula || '-'}</TableCell>
+                      <TableCell>
+                        {presupuesto.fechaCreacion ? new Date(presupuesto.fechaCreacion).toLocaleDateString('es-ES') : '-'}
+                      </TableCell>
+                      <TableCell>{presupuesto.total.toFixed(2)} €</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          presupuesto.estado === 'aprobado' ? 'default' :
+                          presupuesto.estado === 'rechazado' ? 'destructive' :
+                          'secondary'
+                        }>
+                          {presupuesto.estado}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" data-testid={`button-ver-${presupuesto.id}`}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
