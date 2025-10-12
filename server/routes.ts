@@ -28,6 +28,12 @@ import {
   insertEncuestaSchema,
   insertRespuestaEncuestaSchema,
   insertCuponSchema,
+  insertCatalogoResiduoSchema,
+  insertContenedorResiduoSchema,
+  insertGestorResiduoSchema,
+  insertRegistroResiduoSchema,
+  insertDocumentoDISchema,
+  insertRecogidaResiduoSchema,
 } from "@shared/schema";
 
 if (!process.env.JWT_SECRET) {
@@ -1066,6 +1072,354 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteCupon(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gestión de Residuos - Catálogo
+  app.get("/api/catalogo-residuos", authenticateToken, async (req, res) => {
+    try {
+      const catalogos = await storage.getCatalogoResiduos();
+      res.json(catalogos);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/catalogo-residuos/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const catalogo = await storage.getCatalogoResiduo(id);
+      if (!catalogo) {
+        return res.status(404).json({ error: "Catálogo no encontrado" });
+      }
+      res.json(catalogo);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/catalogo-residuos", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const validated = insertCatalogoResiduoSchema.parse(req.body);
+      const catalogo = await storage.createCatalogoResiduo(validated);
+      res.status(201).json(catalogo);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/catalogo-residuos/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertCatalogoResiduoSchema.partial().parse(req.body);
+      const catalogo = await storage.updateCatalogoResiduo(id, validated);
+      if (!catalogo) {
+        return res.status(404).json({ error: "Catálogo no encontrado" });
+      }
+      res.json(catalogo);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/catalogo-residuos/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCatalogoResiduo(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gestión de Residuos - Contenedores
+  app.get("/api/contenedores-residuos", authenticateToken, async (req, res) => {
+    try {
+      const contenedores = await storage.getContenedoresResiduos();
+      res.json(contenedores);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/contenedores-residuos/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const contenedor = await storage.getContenedorResiduo(id);
+      if (!contenedor) {
+        return res.status(404).json({ error: "Contenedor no encontrado" });
+      }
+      res.json(contenedor);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/contenedores-residuos", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertContenedorResiduoSchema.parse(req.body);
+      const contenedor = await storage.createContenedorResiduo(validated);
+      res.status(201).json(contenedor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/contenedores-residuos/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertContenedorResiduoSchema.partial().parse(req.body);
+      const contenedor = await storage.updateContenedorResiduo(id, validated);
+      if (!contenedor) {
+        return res.status(404).json({ error: "Contenedor no encontrado" });
+      }
+      res.json(contenedor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/contenedores-residuos/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteContenedorResiduo(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gestión de Residuos - Gestores
+  app.get("/api/gestores-residuos", authenticateToken, async (req, res) => {
+    try {
+      const gestores = await storage.getGestoresResiduos();
+      res.json(gestores);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/gestores-residuos/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const gestor = await storage.getGestorResiduo(id);
+      if (!gestor) {
+        return res.status(404).json({ error: "Gestor no encontrado" });
+      }
+      res.json(gestor);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/gestores-residuos", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const validated = insertGestorResiduoSchema.parse(req.body);
+      const gestor = await storage.createGestorResiduo(validated);
+      res.status(201).json(gestor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/gestores-residuos/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertGestorResiduoSchema.partial().parse(req.body);
+      const gestor = await storage.updateGestorResiduo(id, validated);
+      if (!gestor) {
+        return res.status(404).json({ error: "Gestor no encontrado" });
+      }
+      res.json(gestor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/gestores-residuos/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteGestorResiduo(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gestión de Residuos - Registros
+  app.get("/api/registros-residuos", authenticateToken, async (req, res) => {
+    try {
+      const { orId } = req.query;
+      const registros = await storage.getRegistrosResiduos(
+        orId ? parseInt(orId as string) : undefined
+      );
+      res.json(registros);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/registros-residuos/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const registro = await storage.getRegistroResiduo(id);
+      if (!registro) {
+        return res.status(404).json({ error: "Registro no encontrado" });
+      }
+      res.json(registro);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/registros-residuos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
+    try {
+      const validated = insertRegistroResiduoSchema.parse(req.body);
+      const registro = await storage.createRegistroResiduo(validated);
+      res.status(201).json(registro);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/registros-residuos/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertRegistroResiduoSchema.partial().parse(req.body);
+      const registro = await storage.updateRegistroResiduo(id, validated);
+      if (!registro) {
+        return res.status(404).json({ error: "Registro no encontrado" });
+      }
+      res.json(registro);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/registros-residuos/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRegistroResiduo(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gestión de Residuos - Documentos DI
+  app.get("/api/documentos-di", authenticateToken, async (req, res) => {
+    try {
+      const documentos = await storage.getDocumentosDI();
+      res.json(documentos);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/documentos-di/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const documento = await storage.getDocumentoDI(id);
+      if (!documento) {
+        return res.status(404).json({ error: "Documento DI no encontrado" });
+      }
+      res.json(documento);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/documentos-di", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const validated = insertDocumentoDISchema.parse(req.body);
+      const documento = await storage.createDocumentoDI(validated);
+      res.status(201).json(documento);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/documentos-di/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertDocumentoDISchema.partial().parse(req.body);
+      const documento = await storage.updateDocumentoDI(id, validated);
+      if (!documento) {
+        return res.status(404).json({ error: "Documento DI no encontrado" });
+      }
+      res.json(documento);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/documentos-di/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteDocumentoDI(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Gestión de Residuos - Recogidas
+  app.get("/api/recogidas-residuos", authenticateToken, async (req, res) => {
+    try {
+      const { documentoDIId } = req.query;
+      const recogidas = await storage.getRecogidasResiduos(
+        documentoDIId ? parseInt(documentoDIId as string) : undefined
+      );
+      res.json(recogidas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/recogidas-residuos/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const recogida = await storage.getRecogidaResiduo(id);
+      if (!recogida) {
+        return res.status(404).json({ error: "Recogida no encontrada" });
+      }
+      res.json(recogida);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/recogidas-residuos", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertRecogidaResiduoSchema.parse(req.body);
+      const recogida = await storage.createRecogidaResiduo(validated);
+      res.status(201).json(recogida);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/recogidas-residuos/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertRecogidaResiduoSchema.partial().parse(req.body);
+      const recogida = await storage.updateRecogidaResiduo(id, validated);
+      if (!recogida) {
+        return res.status(404).json({ error: "Recogida no encontrada" });
+      }
+      res.json(recogida);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/recogidas-residuos/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRecogidaResiduo(id);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });

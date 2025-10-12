@@ -69,6 +69,24 @@ import {
   type InsertRespuestaEncuesta,
   type Cupon,
   type InsertCupon,
+  catalogoResiduos,
+  contenedoresResiduos,
+  gestoresResiduos,
+  registrosResiduos,
+  documentosDI,
+  recogidasResiduos,
+  type CatalogoResiduo,
+  type InsertCatalogoResiduo,
+  type ContenedorResiduo,
+  type InsertContenedorResiduo,
+  type GestorResiduo,
+  type InsertGestorResiduo,
+  type RegistroResiduo,
+  type InsertRegistroResiduo,
+  type DocumentoDI,
+  type InsertDocumentoDI,
+  type RecogidaResiduo,
+  type InsertRecogidaResiduo,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
@@ -194,6 +212,48 @@ export interface IStorage {
   createCupon(cupon: InsertCupon): Promise<Cupon>;
   updateCupon(id: number, cupon: Partial<InsertCupon>): Promise<Cupon | undefined>;
   deleteCupon(id: number): Promise<void>;
+  
+  // Gestión de Residuos - Catálogo
+  getCatalogoResiduos(): Promise<CatalogoResiduo[]>;
+  getCatalogoResiduo(id: number): Promise<CatalogoResiduo | undefined>;
+  createCatalogoResiduo(catalogo: InsertCatalogoResiduo): Promise<CatalogoResiduo>;
+  updateCatalogoResiduo(id: number, catalogo: Partial<InsertCatalogoResiduo>): Promise<CatalogoResiduo | undefined>;
+  deleteCatalogoResiduo(id: number): Promise<void>;
+  
+  // Gestión de Residuos - Contenedores
+  getContenedoresResiduos(): Promise<ContenedorResiduo[]>;
+  getContenedorResiduo(id: number): Promise<ContenedorResiduo | undefined>;
+  createContenedorResiduo(contenedor: InsertContenedorResiduo): Promise<ContenedorResiduo>;
+  updateContenedorResiduo(id: number, contenedor: Partial<InsertContenedorResiduo>): Promise<ContenedorResiduo | undefined>;
+  deleteContenedorResiduo(id: number): Promise<void>;
+  
+  // Gestión de Residuos - Gestores
+  getGestoresResiduos(): Promise<GestorResiduo[]>;
+  getGestorResiduo(id: number): Promise<GestorResiduo | undefined>;
+  createGestorResiduo(gestor: InsertGestorResiduo): Promise<GestorResiduo>;
+  updateGestorResiduo(id: number, gestor: Partial<InsertGestorResiduo>): Promise<GestorResiduo | undefined>;
+  deleteGestorResiduo(id: number): Promise<void>;
+  
+  // Gestión de Residuos - Registros
+  getRegistrosResiduos(orId?: number): Promise<RegistroResiduo[]>;
+  getRegistroResiduo(id: number): Promise<RegistroResiduo | undefined>;
+  createRegistroResiduo(registro: InsertRegistroResiduo): Promise<RegistroResiduo>;
+  updateRegistroResiduo(id: number, registro: Partial<InsertRegistroResiduo>): Promise<RegistroResiduo | undefined>;
+  deleteRegistroResiduo(id: number): Promise<void>;
+  
+  // Gestión de Residuos - Documentos DI
+  getDocumentosDI(): Promise<DocumentoDI[]>;
+  getDocumentoDI(id: number): Promise<DocumentoDI | undefined>;
+  createDocumentoDI(documento: InsertDocumentoDI): Promise<DocumentoDI>;
+  updateDocumentoDI(id: number, documento: Partial<InsertDocumentoDI>): Promise<DocumentoDI | undefined>;
+  deleteDocumentoDI(id: number): Promise<void>;
+  
+  // Gestión de Residuos - Recogidas
+  getRecogidasResiduos(documentoDIId?: number): Promise<RecogidaResiduo[]>;
+  getRecogidaResiduo(id: number): Promise<RecogidaResiduo | undefined>;
+  createRecogidaResiduo(recogida: InsertRecogidaResiduo): Promise<RecogidaResiduo>;
+  updateRecogidaResiduo(id: number, recogida: Partial<InsertRecogidaResiduo>): Promise<RecogidaResiduo | undefined>;
+  deleteRecogidaResiduo(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -725,6 +785,180 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCupon(id: number): Promise<void> {
     await db.delete(cupones).where(eq(cupones.id, id));
+  }
+
+  // Gestión de Residuos - Catálogo
+  async getCatalogoResiduos(): Promise<CatalogoResiduo[]> {
+    return await db.select().from(catalogoResiduos).orderBy(catalogoResiduos.codigoLER);
+  }
+
+  async getCatalogoResiduo(id: number): Promise<CatalogoResiduo | undefined> {
+    const [catalogo] = await db.select().from(catalogoResiduos).where(eq(catalogoResiduos.id, id));
+    return catalogo || undefined;
+  }
+
+  async createCatalogoResiduo(catalogo: InsertCatalogoResiduo): Promise<CatalogoResiduo> {
+    const [newCatalogo] = await db.insert(catalogoResiduos).values(catalogo).returning();
+    return newCatalogo;
+  }
+
+  async updateCatalogoResiduo(id: number, catalogo: Partial<InsertCatalogoResiduo>): Promise<CatalogoResiduo | undefined> {
+    const [updated] = await db
+      .update(catalogoResiduos)
+      .set(catalogo)
+      .where(eq(catalogoResiduos.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCatalogoResiduo(id: number): Promise<void> {
+    await db.delete(catalogoResiduos).where(eq(catalogoResiduos.id, id));
+  }
+
+  // Gestión de Residuos - Contenedores
+  async getContenedoresResiduos(): Promise<ContenedorResiduo[]> {
+    return await db.select().from(contenedoresResiduos).orderBy(contenedoresResiduos.codigo);
+  }
+
+  async getContenedorResiduo(id: number): Promise<ContenedorResiduo | undefined> {
+    const [contenedor] = await db.select().from(contenedoresResiduos).where(eq(contenedoresResiduos.id, id));
+    return contenedor || undefined;
+  }
+
+  async createContenedorResiduo(contenedor: InsertContenedorResiduo): Promise<ContenedorResiduo> {
+    const [newContenedor] = await db.insert(contenedoresResiduos).values(contenedor).returning();
+    return newContenedor;
+  }
+
+  async updateContenedorResiduo(id: number, contenedor: Partial<InsertContenedorResiduo>): Promise<ContenedorResiduo | undefined> {
+    const [updated] = await db
+      .update(contenedoresResiduos)
+      .set(contenedor)
+      .where(eq(contenedoresResiduos.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteContenedorResiduo(id: number): Promise<void> {
+    await db.delete(contenedoresResiduos).where(eq(contenedoresResiduos.id, id));
+  }
+
+  // Gestión de Residuos - Gestores
+  async getGestoresResiduos(): Promise<GestorResiduo[]> {
+    return await db.select().from(gestoresResiduos).orderBy(gestoresResiduos.razonSocial);
+  }
+
+  async getGestorResiduo(id: number): Promise<GestorResiduo | undefined> {
+    const [gestor] = await db.select().from(gestoresResiduos).where(eq(gestoresResiduos.id, id));
+    return gestor || undefined;
+  }
+
+  async createGestorResiduo(gestor: InsertGestorResiduo): Promise<GestorResiduo> {
+    const [newGestor] = await db.insert(gestoresResiduos).values(gestor).returning();
+    return newGestor;
+  }
+
+  async updateGestorResiduo(id: number, gestor: Partial<InsertGestorResiduo>): Promise<GestorResiduo | undefined> {
+    const [updated] = await db
+      .update(gestoresResiduos)
+      .set(gestor)
+      .where(eq(gestoresResiduos.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteGestorResiduo(id: number): Promise<void> {
+    await db.delete(gestoresResiduos).where(eq(gestoresResiduos.id, id));
+  }
+
+  // Gestión de Residuos - Registros
+  async getRegistrosResiduos(orId?: number): Promise<RegistroResiduo[]> {
+    if (orId) {
+      return await db.select().from(registrosResiduos).where(eq(registrosResiduos.orId, orId)).orderBy(desc(registrosResiduos.fecha));
+    }
+    return await db.select().from(registrosResiduos).orderBy(desc(registrosResiduos.fecha));
+  }
+
+  async getRegistroResiduo(id: number): Promise<RegistroResiduo | undefined> {
+    const [registro] = await db.select().from(registrosResiduos).where(eq(registrosResiduos.id, id));
+    return registro || undefined;
+  }
+
+  async createRegistroResiduo(registro: InsertRegistroResiduo): Promise<RegistroResiduo> {
+    const [newRegistro] = await db.insert(registrosResiduos).values(registro).returning();
+    return newRegistro;
+  }
+
+  async updateRegistroResiduo(id: number, registro: Partial<InsertRegistroResiduo>): Promise<RegistroResiduo | undefined> {
+    const [updated] = await db
+      .update(registrosResiduos)
+      .set(registro)
+      .where(eq(registrosResiduos.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteRegistroResiduo(id: number): Promise<void> {
+    await db.delete(registrosResiduos).where(eq(registrosResiduos.id, id));
+  }
+
+  // Gestión de Residuos - Documentos DI
+  async getDocumentosDI(): Promise<DocumentoDI[]> {
+    return await db.select().from(documentosDI).orderBy(desc(documentosDI.fechaEmision));
+  }
+
+  async getDocumentoDI(id: number): Promise<DocumentoDI | undefined> {
+    const [documento] = await db.select().from(documentosDI).where(eq(documentosDI.id, id));
+    return documento || undefined;
+  }
+
+  async createDocumentoDI(documento: InsertDocumentoDI): Promise<DocumentoDI> {
+    const [newDocumento] = await db.insert(documentosDI).values(documento).returning();
+    return newDocumento;
+  }
+
+  async updateDocumentoDI(id: number, documento: Partial<InsertDocumentoDI>): Promise<DocumentoDI | undefined> {
+    const [updated] = await db
+      .update(documentosDI)
+      .set(documento)
+      .where(eq(documentosDI.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDocumentoDI(id: number): Promise<void> {
+    await db.delete(documentosDI).where(eq(documentosDI.id, id));
+  }
+
+  // Gestión de Residuos - Recogidas
+  async getRecogidasResiduos(documentoDIId?: number): Promise<RecogidaResiduo[]> {
+    if (documentoDIId) {
+      return await db.select().from(recogidasResiduos).where(eq(recogidasResiduos.documentoDIId, documentoDIId)).orderBy(desc(recogidasResiduos.fechaRecogida));
+    }
+    return await db.select().from(recogidasResiduos).orderBy(desc(recogidasResiduos.fechaRecogida));
+  }
+
+  async getRecogidaResiduo(id: number): Promise<RecogidaResiduo | undefined> {
+    const [recogida] = await db.select().from(recogidasResiduos).where(eq(recogidasResiduos.id, id));
+    return recogida || undefined;
+  }
+
+  async createRecogidaResiduo(recogida: InsertRecogidaResiduo): Promise<RecogidaResiduo> {
+    const [newRecogida] = await db.insert(recogidasResiduos).values(recogida).returning();
+    return newRecogida;
+  }
+
+  async updateRecogidaResiduo(id: number, recogida: Partial<InsertRecogidaResiduo>): Promise<RecogidaResiduo | undefined> {
+    const [updated] = await db
+      .update(recogidasResiduos)
+      .set(recogida)
+      .where(eq(recogidasResiduos.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteRecogidaResiduo(id: number): Promise<void> {
+    await db.delete(recogidasResiduos).where(eq(recogidasResiduos.id, id));
   }
 }
 
