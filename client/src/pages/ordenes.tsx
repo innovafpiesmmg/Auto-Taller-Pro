@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, ClipboardList, Calendar } from "lucide-react";
@@ -24,6 +25,7 @@ const estadoLabels = {
 
 export default function Ordenes() {
   const estados: Array<keyof typeof estadoColors> = ["abierta", "en_curso", "a_la_espera", "terminada", "facturada"];
+  const [, navigate] = useLocation();
 
   const { data: ordenes, isLoading } = useQuery<SelectOrdenReparacion[]>({
     queryKey: ["/api/ordenes"],
@@ -101,7 +103,12 @@ export default function Ordenes() {
                                 </div>
                               )}
                             </div>
-                            <Button variant="outline" size="sm" data-testid={`button-ver-orden-${orden.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => navigate(`/ordenes/${orden.id}`)}
+                              data-testid={`button-ver-orden-${orden.id}`}
+                            >
                               Ver detalles
                             </Button>
                           </div>
