@@ -159,12 +159,14 @@ export interface IStorage {
   getProveedor(id: number): Promise<Proveedor | undefined>;
   createProveedor(proveedor: InsertProveedor): Promise<Proveedor>;
   updateProveedor(id: number, proveedor: Partial<InsertProveedor>): Promise<Proveedor | undefined>;
+  deleteProveedor(id: number): Promise<void>;
   
   // Pedidos de Compra
   getPedidosCompra(estado?: string): Promise<PedidoCompra[]>;
   getPedidoCompra(id: number): Promise<PedidoCompra | undefined>;
   createPedidoCompra(pedido: InsertPedidoCompra): Promise<PedidoCompra>;
   updatePedidoCompra(id: number, pedido: Partial<InsertPedidoCompra>): Promise<PedidoCompra | undefined>;
+  deletePedidoCompra(id: number): Promise<void>;
   getLineasPedido(pedidoId: number): Promise<LineaPedido[]>;
   createLineaPedido(linea: InsertLineaPedido): Promise<LineaPedido>;
   updateLineaPedido(id: number, linea: Partial<InsertLineaPedido>): Promise<LineaPedido | undefined>;
@@ -173,6 +175,7 @@ export interface IStorage {
   getRecepciones(): Promise<Recepcion[]>;
   getRecepcion(id: number): Promise<Recepcion | undefined>;
   createRecepcion(recepcion: InsertRecepcion): Promise<Recepcion>;
+  deleteRecepcion(id: number): Promise<void>;
   getLineasRecepcion(recepcionId: number): Promise<LineaRecepcion[]>;
   createLineaRecepcion(linea: InsertLineaRecepcion): Promise<LineaRecepcion>;
   
@@ -181,6 +184,7 @@ export interface IStorage {
   getUbicacion(id: number): Promise<Ubicacion | undefined>;
   createUbicacion(ubicacion: InsertUbicacion): Promise<Ubicacion>;
   updateUbicacion(id: number, ubicacion: Partial<InsertUbicacion>): Promise<Ubicacion | undefined>;
+  deleteUbicacion(id: number): Promise<void>;
   
   // Movimientos de Almacén
   getMovimientosAlmacen(articuloId?: number): Promise<MovimientoAlmacen[]>;
@@ -561,6 +565,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteProveedor(id: number): Promise<void> {
+    await db.delete(proveedores).where(eq(proveedores.id, id));
+  }
+
   // Pedidos de Compra
   async getPedidosCompra(estado?: string): Promise<PedidoCompra[]> {
     if (estado) {
@@ -586,6 +594,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(pedidosCompra.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deletePedidoCompra(id: number): Promise<void> {
+    await db.delete(pedidosCompra).where(eq(pedidosCompra.id, id));
   }
 
   async getLineasPedido(pedidoId: number): Promise<LineaPedido[]> {
@@ -621,6 +633,10 @@ export class DatabaseStorage implements IStorage {
     return newRecepcion;
   }
 
+  async deleteRecepcion(id: number): Promise<void> {
+    await db.delete(recepciones).where(eq(recepciones.id, id));
+  }
+
   async getLineasRecepcion(recepcionId: number): Promise<LineaRecepcion[]> {
     return await db.select().from(lineasRecepcion).where(eq(lineasRecepcion.recepcionId, recepcionId));
   }
@@ -652,6 +668,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ubicaciones.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deleteUbicacion(id: number): Promise<void> {
+    await db.delete(ubicaciones).where(eq(ubicaciones.id, id));
   }
 
   // Movimientos de Almacén

@@ -33,6 +33,11 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
+  
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined;
+  }
+  
   return await res.json();
 }
 

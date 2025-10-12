@@ -650,6 +650,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/proveedores/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteProveedor(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Pedidos de Compra
   app.get("/api/pedidos-compra", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
@@ -676,7 +686,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/pedidos-compra", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
-      const validated = insertPedidoCompraSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.fecha && typeof data.fecha === 'string') {
+        data.fecha = new Date(data.fecha);
+      }
+      if (data.fechaEntregaEstimada && typeof data.fechaEntregaEstimada === 'string') {
+        data.fechaEntregaEstimada = new Date(data.fechaEntregaEstimada);
+      }
+      const validated = insertPedidoCompraSchema.parse(data);
       const pedido = await storage.createPedidoCompra(validated);
       res.status(201).json(pedido);
     } catch (error: any) {
@@ -687,12 +704,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/pedidos-compra/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validated = insertPedidoCompraSchema.partial().parse(req.body);
+      const data = { ...req.body };
+      if (data.fecha && typeof data.fecha === 'string') {
+        data.fecha = new Date(data.fecha);
+      }
+      if (data.fechaEntregaEstimada && typeof data.fechaEntregaEstimada === 'string') {
+        data.fechaEntregaEstimada = new Date(data.fechaEntregaEstimada);
+      }
+      const validated = insertPedidoCompraSchema.partial().parse(data);
       const pedido = await storage.updatePedidoCompra(id, validated);
       if (!pedido) {
         return res.status(404).json({ error: "Pedido no encontrado" });
       }
       res.json(pedido);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/pedidos-compra/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deletePedidoCompra(id);
+      res.status(204).send();
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -758,9 +792,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/recepciones", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
-      const validated = insertRecepcionSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.fecha && typeof data.fecha === 'string') {
+        data.fecha = new Date(data.fecha);
+      }
+      const validated = insertRecepcionSchema.parse(data);
       const recepcion = await storage.createRecepcion(validated);
       res.status(201).json(recepcion);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/recepciones/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteRecepcion(id);
+      res.status(204).send();
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -829,6 +877,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Ubicación no encontrada" });
       }
       res.json(ubicacion);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/ubicaciones/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteUbicacion(id);
+      res.status(204).send();
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
