@@ -56,6 +56,8 @@ import { format } from "date-fns";
 
 const formSchema = insertRegistroResiduoSchema.extend({
   fecha: z.coerce.date(),
+  orId: z.number().optional(),
+  contenedorId: z.number().min(1, "Debe seleccionar un contenedor"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -70,8 +72,8 @@ export default function RegistrosResiduos() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      orId: 0,
-      contenedorId: 0,
+      orId: undefined,
+      contenedorId: undefined,
       cantidad: "0",
       fecha: new Date(),
       observaciones: "",
@@ -91,7 +93,7 @@ export default function RegistrosResiduos() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: FormValues) => {
+    mutationFn: async (data: FormValues & { catalogoResiduoId?: number }) => {
       const payload = {
         ...data,
         fecha: data.fecha.toISOString(),
@@ -145,8 +147,8 @@ export default function RegistrosResiduos() {
 
   const handleEdit = (registro: RegistroResiduo) => {
     setEditingRegistro(registro);
-    form.setValue("orId", registro.orId || 0);
-    form.setValue("contenedorId", registro.contenedorId || 0);
+    form.setValue("orId", registro.orId ?? undefined);
+    form.setValue("contenedorId", registro.contenedorId ?? undefined);
     form.setValue("cantidad", registro.cantidad);
     form.setValue("fecha", new Date(registro.fecha));
     form.setValue("observaciones", registro.observaciones || "");
@@ -160,7 +162,20 @@ export default function RegistrosResiduos() {
   };
 
   const onSubmit = (data: FormValues) => {
-    createMutation.mutate(data);
+    const contenedor = contenedores?.find(c => c.id === data.contenedorId);
+    if (!contenedor) {
+      toast({
+        title: "Error",
+        description: "Contenedor no encontrado",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    createMutation.mutate({
+      ...data,
+      catalogoResiduoId: contenedor.catalogoResiduoId
+    });
   };
 
   const filteredRegistros = registros?.filter(registro => {
@@ -295,8 +310,17 @@ export default function RegistrosResiduos() {
                           <Input
                             data-testid="input-fecha"
                             type="date"
-                            value={field.value instanceof Date ? format(field.value, "yyyy-MM-dd") : ""}
-                            onChange={(e) => field.onChange(new Date(e.target.value))}
+                            value={
+                              field.value instanceof Date && !isNaN(field.value.getTime())
+                                ? format(field.value, "yyyy-MM-dd")
+                                : ""
+                            }
+                            onChange={(e) => {
+                              const date = new Date(e.target.value);
+                              if (!isNaN(date.getTime())) {
+                                field.onChange(date);
+                              }
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
