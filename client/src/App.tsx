@@ -24,6 +24,9 @@ import Proveedores from "@/pages/proveedores";
 import PedidosCompra from "@/pages/pedidos-compra";
 import Recepciones from "@/pages/recepciones";
 import Ubicaciones from "@/pages/ubicaciones";
+import Campanas from "@/pages/campanas";
+import Encuestas from "@/pages/encuestas";
+import Cupones from "@/pages/cupones";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -88,6 +91,9 @@ function ProtectedRouter() {
               <Route path="/pedidos-compra" component={PedidosCompra} />
               <Route path="/recepciones" component={Recepciones} />
               <Route path="/ubicaciones" component={Ubicaciones} />
+              <Route path="/campanas" component={Campanas} />
+              <Route path="/encuestas" component={Encuestas} />
+              <Route path="/cupones" component={Cupones} />
               <Route component={NotFound} />
             </Switch>
           </main>

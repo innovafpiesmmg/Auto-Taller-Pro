@@ -12,7 +12,10 @@ import {
   Building,
   ShoppingCart,
   PackageCheck,
-  MapPin
+  MapPin,
+  Megaphone,
+  ClipboardList as ClipboardListIcon,
+  Ticket
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -98,6 +101,24 @@ const comprasAlmacenItems = [
   },
 ];
 
+const crmPostventaItems = [
+  {
+    title: "Campañas",
+    url: "/campanas",
+    icon: Megaphone,
+  },
+  {
+    title: "Encuestas",
+    url: "/encuestas",
+    icon: ClipboardListIcon,
+  },
+  {
+    title: "Cupones",
+    url: "/cupones",
+    icon: Ticket,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -142,6 +163,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {comprasAlmacenItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>CRM Postventa</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {crmPostventaItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild

@@ -57,6 +57,18 @@ import {
   type InsertUbicacion,
   type MovimientoAlmacen,
   type InsertMovimientoAlmacen,
+  campanas,
+  encuestas,
+  respuestasEncuestas,
+  cupones,
+  type Campana,
+  type InsertCampana,
+  type Encuesta,
+  type InsertEncuesta,
+  type RespuestaEncuesta,
+  type InsertRespuestaEncuesta,
+  type Cupon,
+  type InsertCupon,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
@@ -155,6 +167,29 @@ export interface IStorage {
   // Movimientos de Almacén
   getMovimientosAlmacen(articuloId?: number): Promise<MovimientoAlmacen[]>;
   createMovimientoAlmacen(movimiento: InsertMovimientoAlmacen): Promise<MovimientoAlmacen>;
+  
+  // CRM Postventa - Campañas
+  getCampanas(estado?: string): Promise<Campana[]>;
+  getCampana(id: number): Promise<Campana | undefined>;
+  createCampana(campana: InsertCampana): Promise<Campana>;
+  updateCampana(id: number, campana: Partial<InsertCampana>): Promise<Campana | undefined>;
+  
+  // CRM Postventa - Encuestas
+  getEncuestas(): Promise<Encuesta[]>;
+  getEncuesta(id: number): Promise<Encuesta | undefined>;
+  createEncuesta(encuesta: InsertEncuesta): Promise<Encuesta>;
+  updateEncuesta(id: number, encuesta: Partial<InsertEncuesta>): Promise<Encuesta | undefined>;
+  
+  // CRM Postventa - Respuestas de Encuestas
+  getRespuestasEncuestas(encuestaId?: number, clienteId?: number): Promise<RespuestaEncuesta[]>;
+  createRespuestaEncuesta(respuesta: InsertRespuestaEncuesta): Promise<RespuestaEncuesta>;
+  
+  // CRM Postventa - Cupones
+  getCupones(clienteId?: number, estado?: string): Promise<Cupon[]>;
+  getCupon(id: number): Promise<Cupon | undefined>;
+  getCuponByCodigo(codigo: string): Promise<Cupon | undefined>;
+  createCupon(cupon: InsertCupon): Promise<Cupon>;
+  updateCupon(id: number, cupon: Partial<InsertCupon>): Promise<Cupon | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -566,6 +601,110 @@ export class DatabaseStorage implements IStorage {
   async createMovimientoAlmacen(movimiento: InsertMovimientoAlmacen): Promise<MovimientoAlmacen> {
     const [newMovimiento] = await db.insert(movimientosAlmacen).values(movimiento).returning();
     return newMovimiento;
+  }
+
+  // CRM Postventa - Campañas
+  async getCampanas(estado?: string): Promise<Campana[]> {
+    if (estado) {
+      return await db.select().from(campanas).where(eq(campanas.estado, estado)).orderBy(desc(campanas.createdAt));
+    }
+    return await db.select().from(campanas).orderBy(desc(campanas.createdAt));
+  }
+
+  async getCampana(id: number): Promise<Campana | undefined> {
+    const [campana] = await db.select().from(campanas).where(eq(campanas.id, id));
+    return campana || undefined;
+  }
+
+  async createCampana(campana: InsertCampana): Promise<Campana> {
+    const [newCampana] = await db.insert(campanas).values(campana).returning();
+    return newCampana;
+  }
+
+  async updateCampana(id: number, campana: Partial<InsertCampana>): Promise<Campana | undefined> {
+    const [updated] = await db
+      .update(campanas)
+      .set({ ...campana, updatedAt: new Date() })
+      .where(eq(campanas.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // CRM Postventa - Encuestas
+  async getEncuestas(): Promise<Encuesta[]> {
+    return await db.select().from(encuestas).orderBy(desc(encuestas.createdAt));
+  }
+
+  async getEncuesta(id: number): Promise<Encuesta | undefined> {
+    const [encuesta] = await db.select().from(encuestas).where(eq(encuestas.id, id));
+    return encuesta || undefined;
+  }
+
+  async createEncuesta(encuesta: InsertEncuesta): Promise<Encuesta> {
+    const [newEncuesta] = await db.insert(encuestas).values(encuesta).returning();
+    return newEncuesta;
+  }
+
+  async updateEncuesta(id: number, encuesta: Partial<InsertEncuesta>): Promise<Encuesta | undefined> {
+    const [updated] = await db
+      .update(encuestas)
+      .set(encuesta)
+      .where(eq(encuestas.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // CRM Postventa - Respuestas de Encuestas
+  async getRespuestasEncuestas(encuestaId?: number, clienteId?: number): Promise<RespuestaEncuesta[]> {
+    const conditions = [];
+    if (encuestaId) conditions.push(eq(respuestasEncuestas.encuestaId, encuestaId));
+    if (clienteId) conditions.push(eq(respuestasEncuestas.clienteId, clienteId));
+    
+    if (conditions.length > 0) {
+      return await db.select().from(respuestasEncuestas).where(and(...conditions)).orderBy(desc(respuestasEncuestas.fecha));
+    }
+    return await db.select().from(respuestasEncuestas).orderBy(desc(respuestasEncuestas.fecha));
+  }
+
+  async createRespuestaEncuesta(respuesta: InsertRespuestaEncuesta): Promise<RespuestaEncuesta> {
+    const [newRespuesta] = await db.insert(respuestasEncuestas).values(respuesta).returning();
+    return newRespuesta;
+  }
+
+  // CRM Postventa - Cupones
+  async getCupones(clienteId?: number, estado?: string): Promise<Cupon[]> {
+    const conditions = [];
+    if (clienteId) conditions.push(eq(cupones.clienteId, clienteId));
+    if (estado) conditions.push(eq(cupones.estado, estado));
+    
+    if (conditions.length > 0) {
+      return await db.select().from(cupones).where(and(...conditions)).orderBy(desc(cupones.createdAt));
+    }
+    return await db.select().from(cupones).orderBy(desc(cupones.createdAt));
+  }
+
+  async getCupon(id: number): Promise<Cupon | undefined> {
+    const [cupon] = await db.select().from(cupones).where(eq(cupones.id, id));
+    return cupon || undefined;
+  }
+
+  async getCuponByCodigo(codigo: string): Promise<Cupon | undefined> {
+    const [cupon] = await db.select().from(cupones).where(eq(cupones.codigo, codigo));
+    return cupon || undefined;
+  }
+
+  async createCupon(cupon: InsertCupon): Promise<Cupon> {
+    const [newCupon] = await db.insert(cupones).values(cupon).returning();
+    return newCupon;
+  }
+
+  async updateCupon(id: number, cupon: Partial<InsertCupon>): Promise<Cupon | undefined> {
+    const [updated] = await db
+      .update(cupones)
+      .set(cupon)
+      .where(eq(cupones.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

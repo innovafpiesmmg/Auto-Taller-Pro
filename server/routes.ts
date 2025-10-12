@@ -24,6 +24,10 @@ import {
   insertLineaRecepcionSchema,
   insertUbicacionSchema,
   insertMovimientoAlmacenSchema,
+  insertCampanaSchema,
+  insertEncuestaSchema,
+  insertRespuestaEncuestaSchema,
+  insertCuponSchema,
 } from "@shared/schema";
 
 if (!process.env.JWT_SECRET) {
@@ -840,6 +844,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertMovimientoAlmacenSchema.parse(req.body);
       const movimiento = await storage.createMovimientoAlmacen(validated);
       res.status(201).json(movimiento);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // CRM Postventa - Campañas
+  app.get("/api/campanas", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
+    try {
+      const { estado } = req.query;
+      const campanas = await storage.getCampanas(estado as string);
+      res.json(campanas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/campanas/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const campana = await storage.getCampana(id);
+      if (!campana) {
+        return res.status(404).json({ error: "Campaña no encontrada" });
+      }
+      res.json(campana);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/campanas", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const validated = insertCampanaSchema.parse(req.body);
+      const campana = await storage.createCampana(validated);
+      res.status(201).json(campana);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/campanas/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertCampanaSchema.partial().parse(req.body);
+      const campana = await storage.updateCampana(id, validated);
+      if (!campana) {
+        return res.status(404).json({ error: "Campaña no encontrada" });
+      }
+      res.json(campana);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // CRM Postventa - Encuestas
+  app.get("/api/encuestas", authenticateToken, async (req, res) => {
+    try {
+      const encuestas = await storage.getEncuestas();
+      res.json(encuestas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/encuestas/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const encuesta = await storage.getEncuesta(id);
+      if (!encuesta) {
+        return res.status(404).json({ error: "Encuesta no encontrada" });
+      }
+      res.json(encuesta);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/encuestas", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const validated = insertEncuestaSchema.parse(req.body);
+      const encuesta = await storage.createEncuesta(validated);
+      res.status(201).json(encuesta);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/encuestas/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertEncuestaSchema.partial().parse(req.body);
+      const encuesta = await storage.updateEncuesta(id, validated);
+      if (!encuesta) {
+        return res.status(404).json({ error: "Encuesta no encontrada" });
+      }
+      res.json(encuesta);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // CRM Postventa - Respuestas de Encuestas
+  app.get("/api/respuestas-encuestas", authenticateToken, async (req, res) => {
+    try {
+      const { encuestaId, clienteId } = req.query;
+      const respuestas = await storage.getRespuestasEncuestas(
+        encuestaId ? parseInt(encuestaId as string) : undefined,
+        clienteId ? parseInt(clienteId as string) : undefined
+      );
+      res.json(respuestas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/respuestas-encuestas", authenticateToken, async (req, res) => {
+    try {
+      const validated = insertRespuestaEncuestaSchema.parse(req.body);
+      const respuesta = await storage.createRespuestaEncuesta(validated);
+      res.status(201).json(respuesta);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // CRM Postventa - Cupones
+  app.get("/api/cupones", authenticateToken, async (req, res) => {
+    try {
+      const { clienteId, estado } = req.query;
+      const cupones = await storage.getCupones(
+        clienteId ? parseInt(clienteId as string) : undefined,
+        estado as string
+      );
+      res.json(cupones);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/cupones/:id", authenticateToken, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const cupon = await storage.getCupon(id);
+      if (!cupon) {
+        return res.status(404).json({ error: "Cupón no encontrado" });
+      }
+      res.json(cupon);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/cupones/codigo/:codigo", authenticateToken, async (req, res) => {
+    try {
+      const codigo = req.params.codigo;
+      const cupon = await storage.getCuponByCodigo(codigo);
+      if (!cupon) {
+        return res.status(404).json({ error: "Cupón no encontrado" });
+      }
+      res.json(cupon);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/cupones", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const validated = insertCuponSchema.parse(req.body);
+      const cupon = await storage.createCupon(validated);
+      res.status(201).json(cupon);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/cupones/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertCuponSchema.partial().parse(req.body);
+      const cupon = await storage.updateCupon(id, validated);
+      if (!cupon) {
+        return res.status(404).json({ error: "Cupón no encontrado" });
+      }
+      res.json(cupon);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

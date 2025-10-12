@@ -1,0 +1,155 @@
+# Gestión de Residuos en el Sistema DMS para Taller Mecánico
+
+## 1. Introducción
+
+La gestión de residuos en un taller mecánico es una obligación legal, ambiental y administrativa. El sistema DMS debe integrar un módulo específico que permita el control, trazabilidad y cumplimiento normativo de los residuos peligrosos y no peligrosos generados.
+
+## 2. Objetivos del módulo
+
+* Cumplir con la normativa ambiental (Ley 22/2011 y normativa autonómica Canarias).
+* Garantizar trazabilidad completa desde la generación hasta la entrega al gestor autorizado.
+* Generar documentación oficial (DI, hojas de seguimiento, contratos, registros).
+* Controlar costes asociados a residuos.
+* Integrar con facturación y contabilidad (si aplica).
+
+## 3. Tipos de residuos a gestionar
+
+* Aceites usados.
+* Filtros de aceite y combustible.
+* Líquidos refrigerantes y de frenos.
+* Baterías.
+* Neumáticos.
+* Disolventes y trapos contaminados.
+* Envases contaminados.
+* Residuos no peligrosos (chatarra, plásticos, cartón).
+
+## 4. Requisitos funcionales clave
+
+### 4.1 Catálogo de residuos
+
+* Código LER (Lista Europea de Residuos).
+* Clasificación: Peligroso / No Peligroso.
+* Estado físico (líquido, sólido, pastoso).
+* Almacenamiento (tipo, ubicación, capacidad, tiempo máximo).
+
+### 4.2 Registro de generación
+
+* Fecha y hora.
+* OR / vehículo asociado (si aplica).
+* Tipo de residuo.
+* Cantidad (kg, litros, unidades).
+* Responsable.
+* Contenedor asignado.
+
+### 4.3 Almacén de residuos
+
+* Mapeo de contenedores internos (ubicación, capacidad, tipo de residuo).
+* Control de llenado (%).
+* Alertas por capacidad máxima o tiempo de almacenamiento.
+* Historial de movimientos internos.
+
+### 4.4 Gestores autorizados
+
+* Base de datos de gestores autorizados (NIMA, datos fiscales, permisos vigentes).
+* Contratos de tratamiento de residuos.
+* Registro de recogidas.
+
+### 4.5 Documentación oficial
+
+* **Documento de Identificación (DI)** obligatorio para residuos peligrosos.
+* Hojas de seguimiento.
+* Contratos de tratamiento.
+* Justificantes de entrega.
+* Albaranes del gestor.
+* Certificados finales.
+
+### 4.6 Trazabilidad completa
+
+* Generación → Almacenamiento → Transporte → Tratamiento.
+* Auditoría de todos los movimientos.
+* Relación con OR y clientes.
+
+### 4.7 Informes y estadísticas
+
+* Cantidad generada por tipo de residuo y periodo.
+* Coste de gestión por residuo y por gestor.
+* Cumplimiento de límites legales.
+* Historial anual obligatorio.
+* Exportación Excel/PDF.
+
+### 4.8 Integración con otros módulos
+
+* Órdenes de reparación: generación automática de residuos según operación.
+* Almacén: control de contenedores y consumibles.
+* Facturación: coste de gestión (interno o repercutido al cliente).
+* Contabilidad: cuenta de gastos / proveedores.
+* Legal: alertas de caducidad de documentos o permisos.
+
+## 5. Requisitos legales y de cumplimiento
+
+* Registro Oficial de Producción y Gestión de Residuos (ROPG).
+* Número NIMA del taller.
+* Plazos máximos de almacenamiento.
+* Etiquetado obligatorio.
+* Declaraciones anuales.
+* Contratos con gestores autorizados.
+* Transporte con ADR (si aplica).
+
+## 6. Roles y permisos
+
+* Recepción: registrar residuos generados en OR.
+* Medio ambiente / responsable: validar registros, generar documentación, planificar recogidas.
+* Administrador: configurar residuos, gestores, límites y alertas.
+* Auditoría: visibilidad total.
+
+## 7. Alertas y automatizaciones
+
+* Contenedor al 80% o 100%.
+* Tiempo máximo de almacenamiento superado.
+* Documento DI pendiente de cerrar.
+* Contrato de gestor próximo a caducar.
+* Declaración anual pendiente.
+
+## 8. Integración con sistemas externos
+
+* Plataforma telemática de residuos del Gobierno de Canarias (si disponible).
+* Generación de PDFs oficiales.
+* Envío automático al gestor por email/web.
+
+## 9. Informes obligatorios
+
+* Libro de registro de residuos.
+* Informe trimestral/semestral/anual.
+* Trazabilidad por residuo.
+* Declaración anual de residuos peligrosos.
+
+## 10. Interfaz de usuario (propuesta)
+
+* Panel de residuos en dashboard (kg generados, contenedores llenos).
+* Lista de residuos generados.
+* Vista de contenedores (estado visual).
+* Módulo de gestores autorizados.
+* Formulario de DI con autocompletar.
+* Calendario de recogidas.
+
+## 11. Beneficios del módulo
+
+* Evita sanciones legales.
+* Mejora la trazabilidad y seguridad.
+* Automatiza la documentación.
+* Facilita auditorías.
+* Reduce costes y errores.
+* Aumenta la sostenibilidad y la imagen del taller.
+
+## 12. Futuras mejoras
+
+* Sensor IoT en contenedores (nivel real).
+* Escaneo de códigos QR en contenedores.
+* Firma digital con gestor.
+* Integración directa con plataforma regional de residuos.
+
+---
+
+## Conclusión
+
+La gestión de residuos no debe ser un módulo aislado, sino completamente **integrado en los flujos de trabajo del taller**, asegurando trazabilidad, cumplimiento normativo y eficiencia. Este documento define las características necesarias para implementar dicho módulo dentro del DMS.

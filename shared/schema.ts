@@ -23,6 +23,10 @@ export const metodoPagoEnum = pgEnum("metodo_pago", ["efectivo", "tarjeta", "tra
 export const rolEnum = pgEnum("rol", ["admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"]);
 export const estadoPedidoEnum = pgEnum("estado_pedido", ["pendiente", "enviado", "recibido_parcial", "recibido", "cancelado"]);
 export const tipoMovimientoEnum = pgEnum("tipo_movimiento", ["entrada", "salida", "ajuste", "recuento"]);
+export const tipoCampanaEnum = pgEnum("tipo_campana", ["itv", "revision", "cumpleanos", "seguimiento", "promocion"]);
+export const estadoCampanaEnum = pgEnum("estado_campana", ["borrador", "activa", "pausada", "finalizada"]);
+export const tipoEncuestaEnum = pgEnum("tipo_encuesta", ["nps", "csat", "personalizada"]);
+export const estadoCuponEnum = pgEnum("estado_cupon", ["activo", "usado", "expirado", "cancelado"]);
 
 // Usuarios y autenticación
 export const users = pgTable("users", {
@@ -315,6 +319,63 @@ export const movimientosAlmacen = pgTable("movimientos_almacen", {
   fecha: timestamp("fecha").notNull().defaultNow(),
 });
 
+// CRM Postventa - Campañas
+export const campanas = pgTable("campanas", {
+  id: serial("id").primaryKey(),
+  nombre: varchar("nombre", { length: 200 }).notNull(),
+  tipo: tipoCampanaEnum("tipo").notNull(),
+  estado: estadoCampanaEnum("estado").notNull().default("borrador"),
+  descripcion: text("descripcion"),
+  plantillaEmail: text("plantilla_email"),
+  plantillaSms: text("plantilla_sms"),
+  diasAnticipacion: integer("dias_anticipacion"),
+  fechaInicio: timestamp("fecha_inicio"),
+  fechaFin: timestamp("fecha_fin"),
+  createdById: integer("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// CRM Postventa - Encuestas
+export const encuestas = pgTable("encuestas", {
+  id: serial("id").primaryKey(),
+  nombre: varchar("nombre", { length: 200 }).notNull(),
+  tipo: tipoEncuestaEnum("tipo").notNull(),
+  pregunta: text("pregunta").notNull(),
+  activa: boolean("activa").notNull().default(true),
+  mostrarDespuesDeFacturar: boolean("mostrar_despues_de_facturar").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// CRM Postventa - Respuestas de Encuestas
+export const respuestasEncuestas = pgTable("respuestas_encuestas", {
+  id: serial("id").primaryKey(),
+  encuestaId: integer("encuesta_id").notNull().references(() => encuestas.id),
+  clienteId: integer("cliente_id").notNull().references(() => clientes.id),
+  orId: integer("or_id").references(() => ordenesReparacion.id),
+  facturaId: integer("factura_id").references(() => facturas.id),
+  puntuacion: integer("puntuacion"),
+  comentario: text("comentario"),
+  fecha: timestamp("fecha").notNull().defaultNow(),
+});
+
+// CRM Postventa - Cupones
+export const cupones = pgTable("cupones", {
+  id: serial("id").primaryKey(),
+  codigo: varchar("codigo", { length: 50 }).notNull().unique(),
+  descripcion: text("descripcion"),
+  tipoDescuento: varchar("tipo_descuento", { length: 20 }).notNull(),
+  valorDescuento: decimal("valor_descuento", { precision: 10, scale: 2 }).notNull(),
+  montoMinimo: decimal("monto_minimo", { precision: 10, scale: 2 }),
+  clienteId: integer("cliente_id").references(() => clientes.id),
+  estado: estadoCuponEnum("estado").notNull().default("activo"),
+  fechaInicio: timestamp("fecha_inicio").notNull(),
+  fechaExpiracion: timestamp("fecha_expiracion").notNull(),
+  usosMaximos: integer("usos_maximos").default(1),
+  usosActuales: integer("usos_actuales").default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const clientesRelations = relations(clientes, ({ many }) => ({
   vehiculos: many(vehiculos),
@@ -526,6 +587,43 @@ export const movimientosAlmacenRelations = relations(movimientosAlmacen, ({ one 
   }),
 }));
 
+export const campanasRelations = relations(campanas, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [campanas.createdById],
+    references: [users.id],
+  }),
+}));
+
+export const encuestasRelations = relations(encuestas, ({ many }) => ({
+  respuestas: many(respuestasEncuestas),
+}));
+
+export const respuestasEncuestasRelations = relations(respuestasEncuestas, ({ one }) => ({
+  encuesta: one(encuestas, {
+    fields: [respuestasEncuestas.encuestaId],
+    references: [encuestas.id],
+  }),
+  cliente: one(clientes, {
+    fields: [respuestasEncuestas.clienteId],
+    references: [clientes.id],
+  }),
+  ordenReparacion: one(ordenesReparacion, {
+    fields: [respuestasEncuestas.orId],
+    references: [ordenesReparacion.id],
+  }),
+  factura: one(facturas, {
+    fields: [respuestasEncuestas.facturaId],
+    references: [facturas.id],
+  }),
+}));
+
+export const cuponesRelations = relations(cupones, ({ one }) => ({
+  cliente: one(clientes, {
+    fields: [cupones.clienteId],
+    references: [clientes.id],
+  }),
+}));
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -554,6 +652,10 @@ export const insertRecepcionSchema = createInsertSchema(recepciones).omit({ id: 
 export const insertLineaRecepcionSchema = createInsertSchema(lineasRecepcion).omit({ id: true });
 export const insertUbicacionSchema = createInsertSchema(ubicaciones).omit({ id: true, createdAt: true });
 export const insertMovimientoAlmacenSchema = createInsertSchema(movimientosAlmacen).omit({ id: true });
+export const insertCampanaSchema = createInsertSchema(campanas).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEncuestaSchema = createInsertSchema(encuestas).omit({ id: true, createdAt: true });
+export const insertRespuestaEncuestaSchema = createInsertSchema(respuestasEncuestas).omit({ id: true, fecha: true });
+export const insertCuponSchema = createInsertSchema(cupones).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -594,3 +696,11 @@ export type Ubicacion = typeof ubicaciones.$inferSelect;
 export type InsertUbicacion = z.infer<typeof insertUbicacionSchema>;
 export type MovimientoAlmacen = typeof movimientosAlmacen.$inferSelect;
 export type InsertMovimientoAlmacen = z.infer<typeof insertMovimientoAlmacenSchema>;
+export type Campana = typeof campanas.$inferSelect;
+export type InsertCampana = z.infer<typeof insertCampanaSchema>;
+export type Encuesta = typeof encuestas.$inferSelect;
+export type InsertEncuesta = z.infer<typeof insertEncuestaSchema>;
+export type RespuestaEncuesta = typeof respuestasEncuestas.$inferSelect;
+export type InsertRespuestaEncuesta = z.infer<typeof insertRespuestaEncuestaSchema>;
+export type Cupon = typeof cupones.$inferSelect;
+export type InsertCupon = z.infer<typeof insertCuponSchema>;
