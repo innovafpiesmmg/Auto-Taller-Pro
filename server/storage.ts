@@ -36,6 +36,27 @@ import {
   type InsertLineaFactura,
   type Cobro,
   type InsertCobro,
+  proveedores,
+  pedidosCompra,
+  lineasPedido,
+  recepciones,
+  lineasRecepcion,
+  ubicaciones,
+  movimientosAlmacen,
+  type Proveedor,
+  type InsertProveedor,
+  type PedidoCompra,
+  type InsertPedidoCompra,
+  type LineaPedido,
+  type InsertLineaPedido,
+  type Recepcion,
+  type InsertRecepcion,
+  type LineaRecepcion,
+  type InsertLineaRecepcion,
+  type Ubicacion,
+  type InsertUbicacion,
+  type MovimientoAlmacen,
+  type InsertMovimientoAlmacen,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
@@ -102,6 +123,38 @@ export interface IStorage {
   // Cobros
   getCobros(facturaId?: number): Promise<Cobro[]>;
   createCobro(cobro: InsertCobro): Promise<Cobro>;
+  
+  // Proveedores
+  getProveedores(search?: string): Promise<Proveedor[]>;
+  getProveedor(id: number): Promise<Proveedor | undefined>;
+  createProveedor(proveedor: InsertProveedor): Promise<Proveedor>;
+  updateProveedor(id: number, proveedor: Partial<InsertProveedor>): Promise<Proveedor | undefined>;
+  
+  // Pedidos de Compra
+  getPedidosCompra(estado?: string): Promise<PedidoCompra[]>;
+  getPedidoCompra(id: number): Promise<PedidoCompra | undefined>;
+  createPedidoCompra(pedido: InsertPedidoCompra): Promise<PedidoCompra>;
+  updatePedidoCompra(id: number, pedido: Partial<InsertPedidoCompra>): Promise<PedidoCompra | undefined>;
+  getLineasPedido(pedidoId: number): Promise<LineaPedido[]>;
+  createLineaPedido(linea: InsertLineaPedido): Promise<LineaPedido>;
+  updateLineaPedido(id: number, linea: Partial<InsertLineaPedido>): Promise<LineaPedido | undefined>;
+  
+  // Recepciones
+  getRecepciones(): Promise<Recepcion[]>;
+  getRecepcion(id: number): Promise<Recepcion | undefined>;
+  createRecepcion(recepcion: InsertRecepcion): Promise<Recepcion>;
+  getLineasRecepcion(recepcionId: number): Promise<LineaRecepcion[]>;
+  createLineaRecepcion(linea: InsertLineaRecepcion): Promise<LineaRecepcion>;
+  
+  // Ubicaciones
+  getUbicaciones(): Promise<Ubicacion[]>;
+  getUbicacion(id: number): Promise<Ubicacion | undefined>;
+  createUbicacion(ubicacion: InsertUbicacion): Promise<Ubicacion>;
+  updateUbicacion(id: number, ubicacion: Partial<InsertUbicacion>): Promise<Ubicacion | undefined>;
+  
+  // Movimientos de Almacén
+  getMovimientosAlmacen(articuloId?: number): Promise<MovimientoAlmacen[]>;
+  createMovimientoAlmacen(movimiento: InsertMovimientoAlmacen): Promise<MovimientoAlmacen>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -374,6 +427,145 @@ export class DatabaseStorage implements IStorage {
   async createCobro(cobro: InsertCobro): Promise<Cobro> {
     const [newCobro] = await db.insert(cobros).values(cobro).returning();
     return newCobro;
+  }
+
+  // Proveedores
+  async getProveedores(search?: string): Promise<Proveedor[]> {
+    if (search) {
+      return await db.select().from(proveedores).where(
+        or(
+          like(proveedores.codigo, `%${search}%`),
+          like(proveedores.nombre, `%${search}%`),
+          like(proveedores.nif, `%${search}%`)
+        )
+      ).orderBy(proveedores.nombre);
+    }
+    return await db.select().from(proveedores).orderBy(proveedores.nombre);
+  }
+
+  async getProveedor(id: number): Promise<Proveedor | undefined> {
+    const [proveedor] = await db.select().from(proveedores).where(eq(proveedores.id, id));
+    return proveedor || undefined;
+  }
+
+  async createProveedor(proveedor: InsertProveedor): Promise<Proveedor> {
+    const [newProveedor] = await db.insert(proveedores).values(proveedor).returning();
+    return newProveedor;
+  }
+
+  async updateProveedor(id: number, proveedor: Partial<InsertProveedor>): Promise<Proveedor | undefined> {
+    const [updated] = await db
+      .update(proveedores)
+      .set({ ...proveedor, updatedAt: new Date() })
+      .where(eq(proveedores.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Pedidos de Compra
+  async getPedidosCompra(estado?: string): Promise<PedidoCompra[]> {
+    if (estado) {
+      return await db.select().from(pedidosCompra).where(eq(pedidosCompra.estado, estado as any)).orderBy(desc(pedidosCompra.createdAt));
+    }
+    return await db.select().from(pedidosCompra).orderBy(desc(pedidosCompra.createdAt));
+  }
+
+  async getPedidoCompra(id: number): Promise<PedidoCompra | undefined> {
+    const [pedido] = await db.select().from(pedidosCompra).where(eq(pedidosCompra.id, id));
+    return pedido || undefined;
+  }
+
+  async createPedidoCompra(pedido: InsertPedidoCompra): Promise<PedidoCompra> {
+    const [newPedido] = await db.insert(pedidosCompra).values(pedido).returning();
+    return newPedido;
+  }
+
+  async updatePedidoCompra(id: number, pedido: Partial<InsertPedidoCompra>): Promise<PedidoCompra | undefined> {
+    const [updated] = await db
+      .update(pedidosCompra)
+      .set({ ...pedido, updatedAt: new Date() })
+      .where(eq(pedidosCompra.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getLineasPedido(pedidoId: number): Promise<LineaPedido[]> {
+    return await db.select().from(lineasPedido).where(eq(lineasPedido.pedidoId, pedidoId));
+  }
+
+  async createLineaPedido(linea: InsertLineaPedido): Promise<LineaPedido> {
+    const [newLinea] = await db.insert(lineasPedido).values(linea).returning();
+    return newLinea;
+  }
+
+  async updateLineaPedido(id: number, linea: Partial<InsertLineaPedido>): Promise<LineaPedido | undefined> {
+    const [updated] = await db
+      .update(lineasPedido)
+      .set(linea)
+      .where(eq(lineasPedido.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Recepciones
+  async getRecepciones(): Promise<Recepcion[]> {
+    return await db.select().from(recepciones).orderBy(desc(recepciones.createdAt));
+  }
+
+  async getRecepcion(id: number): Promise<Recepcion | undefined> {
+    const [recepcion] = await db.select().from(recepciones).where(eq(recepciones.id, id));
+    return recepcion || undefined;
+  }
+
+  async createRecepcion(recepcion: InsertRecepcion): Promise<Recepcion> {
+    const [newRecepcion] = await db.insert(recepciones).values(recepcion).returning();
+    return newRecepcion;
+  }
+
+  async getLineasRecepcion(recepcionId: number): Promise<LineaRecepcion[]> {
+    return await db.select().from(lineasRecepcion).where(eq(lineasRecepcion.recepcionId, recepcionId));
+  }
+
+  async createLineaRecepcion(linea: InsertLineaRecepcion): Promise<LineaRecepcion> {
+    const [newLinea] = await db.insert(lineasRecepcion).values(linea).returning();
+    return newLinea;
+  }
+
+  // Ubicaciones
+  async getUbicaciones(): Promise<Ubicacion[]> {
+    return await db.select().from(ubicaciones).orderBy(ubicaciones.codigo);
+  }
+
+  async getUbicacion(id: number): Promise<Ubicacion | undefined> {
+    const [ubicacion] = await db.select().from(ubicaciones).where(eq(ubicaciones.id, id));
+    return ubicacion || undefined;
+  }
+
+  async createUbicacion(ubicacion: InsertUbicacion): Promise<Ubicacion> {
+    const [newUbicacion] = await db.insert(ubicaciones).values(ubicacion).returning();
+    return newUbicacion;
+  }
+
+  async updateUbicacion(id: number, ubicacion: Partial<InsertUbicacion>): Promise<Ubicacion | undefined> {
+    const [updated] = await db
+      .update(ubicaciones)
+      .set(ubicacion)
+      .where(eq(ubicaciones.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Movimientos de Almacén
+  async getMovimientosAlmacen(articuloId?: number): Promise<MovimientoAlmacen[]> {
+    if (articuloId) {
+      return await db.select().from(movimientosAlmacen).where(eq(movimientosAlmacen.articuloId, articuloId)).orderBy(desc(movimientosAlmacen.fecha));
+    }
+    return await db.select().from(movimientosAlmacen).orderBy(desc(movimientosAlmacen.fecha));
+  }
+
+  async createMovimientoAlmacen(movimiento: InsertMovimientoAlmacen): Promise<MovimientoAlmacen> {
+    const [newMovimiento] = await db.insert(movimientosAlmacen).values(movimiento).returning();
+    return newMovimiento;
   }
 }
 

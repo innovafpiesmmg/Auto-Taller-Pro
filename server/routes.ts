@@ -17,6 +17,13 @@ import {
   insertFacturaSchema,
   insertLineaFacturaSchema,
   insertCobroSchema,
+  insertProveedorSchema,
+  insertPedidoCompraSchema,
+  insertLineaPedidoSchema,
+  insertRecepcionSchema,
+  insertLineaRecepcionSchema,
+  insertUbicacionSchema,
+  insertMovimientoAlmacenSchema,
 } from "@shared/schema";
 
 if (!process.env.JWT_SECRET) {
@@ -582,6 +589,259 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Proveedores
+  app.get("/api/proveedores", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const { search } = req.query;
+      const proveedores = await storage.getProveedores(search as string);
+      res.json(proveedores);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/proveedores/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const proveedor = await storage.getProveedor(id);
+      if (!proveedor) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+      res.json(proveedor);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/proveedores", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertProveedorSchema.parse(req.body);
+      const proveedor = await storage.createProveedor(validated);
+      res.status(201).json(proveedor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/proveedores/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertProveedorSchema.partial().parse(req.body);
+      const proveedor = await storage.updateProveedor(id, validated);
+      if (!proveedor) {
+        return res.status(404).json({ error: "Proveedor no encontrado" });
+      }
+      res.json(proveedor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Pedidos de Compra
+  app.get("/api/pedidos-compra", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const { estado } = req.query;
+      const pedidos = await storage.getPedidosCompra(estado as string);
+      res.json(pedidos);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/pedidos-compra/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const pedido = await storage.getPedidoCompra(id);
+      if (!pedido) {
+        return res.status(404).json({ error: "Pedido no encontrado" });
+      }
+      res.json(pedido);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/pedidos-compra", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertPedidoCompraSchema.parse(req.body);
+      const pedido = await storage.createPedidoCompra(validated);
+      res.status(201).json(pedido);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/pedidos-compra/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertPedidoCompraSchema.partial().parse(req.body);
+      const pedido = await storage.updatePedidoCompra(id, validated);
+      if (!pedido) {
+        return res.status(404).json({ error: "Pedido no encontrado" });
+      }
+      res.json(pedido);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/pedidos-compra/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const pedidoId = parseInt(req.params.id);
+      const lineas = await storage.getLineasPedido(pedidoId);
+      res.json(lineas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/pedidos-compra/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const pedidoId = parseInt(req.params.id);
+      const validated = insertLineaPedidoSchema.parse({ ...req.body, pedidoId });
+      const linea = await storage.createLineaPedido(validated);
+      res.status(201).json(linea);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/pedidos-compra/lineas/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertLineaPedidoSchema.partial().parse(req.body);
+      const linea = await storage.updateLineaPedido(id, validated);
+      if (!linea) {
+        return res.status(404).json({ error: "Línea de pedido no encontrada" });
+      }
+      res.json(linea);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Recepciones
+  app.get("/api/recepciones", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const recepciones = await storage.getRecepciones();
+      res.json(recepciones);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/recepciones/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const recepcion = await storage.getRecepcion(id);
+      if (!recepcion) {
+        return res.status(404).json({ error: "Recepción no encontrada" });
+      }
+      res.json(recepcion);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/recepciones", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertRecepcionSchema.parse(req.body);
+      const recepcion = await storage.createRecepcion(validated);
+      res.status(201).json(recepcion);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/recepciones/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const recepcionId = parseInt(req.params.id);
+      const lineas = await storage.getLineasRecepcion(recepcionId);
+      res.json(lineas);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/recepciones/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const recepcionId = parseInt(req.params.id);
+      const validated = insertLineaRecepcionSchema.parse({ ...req.body, recepcionId });
+      const linea = await storage.createLineaRecepcion(validated);
+      res.status(201).json(linea);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Ubicaciones
+  app.get("/api/ubicaciones", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const ubicaciones = await storage.getUbicaciones();
+      res.json(ubicaciones);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/ubicaciones/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ubicacion = await storage.getUbicacion(id);
+      if (!ubicacion) {
+        return res.status(404).json({ error: "Ubicación no encontrada" });
+      }
+      res.json(ubicacion);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/ubicaciones", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertUbicacionSchema.parse(req.body);
+      const ubicacion = await storage.createUbicacion(validated);
+      res.status(201).json(ubicacion);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/ubicaciones/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertUbicacionSchema.partial().parse(req.body);
+      const ubicacion = await storage.updateUbicacion(id, validated);
+      if (!ubicacion) {
+        return res.status(404).json({ error: "Ubicación no encontrada" });
+      }
+      res.json(ubicacion);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Movimientos de Almacén
+  app.get("/api/movimientos-almacen", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const { articuloId } = req.query;
+      const movimientos = await storage.getMovimientosAlmacen(articuloId ? parseInt(articuloId as string) : undefined);
+      res.json(movimientos);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/movimientos-almacen", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const validated = insertMovimientoAlmacenSchema.parse(req.body);
+      const movimiento = await storage.createMovimientoAlmacen(validated);
+      res.status(201).json(movimiento);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 

@@ -20,6 +20,10 @@ import Articulos from "@/pages/articulos";
 import Facturas from "@/pages/facturas";
 import Cobros from "@/pages/cobros";
 import OrdenDetalle from "@/pages/orden-detalle";
+import Proveedores from "@/pages/proveedores";
+import PedidosCompra from "@/pages/pedidos-compra";
+import Recepciones from "@/pages/recepciones";
+import Ubicaciones from "@/pages/ubicaciones";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -80,6 +84,10 @@ function ProtectedRouter() {
               <Route path="/articulos" component={Articulos} />
               <Route path="/facturas" component={Facturas} />
               <Route path="/cobros" component={Cobros} />
+              <Route path="/proveedores" component={Proveedores} />
+              <Route path="/pedidos-compra" component={PedidosCompra} />
+              <Route path="/recepciones" component={Recepciones} />
+              <Route path="/ubicaciones" component={Ubicaciones} />
               <Route component={NotFound} />
             </Switch>
           </main>

@@ -8,7 +8,11 @@ import {
   Package,
   Receipt,
   Wallet,
-  Settings
+  Settings,
+  Building,
+  ShoppingCart,
+  PackageCheck,
+  MapPin
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -71,6 +75,29 @@ const menuItems = [
   },
 ];
 
+const comprasAlmacenItems = [
+  {
+    title: "Proveedores",
+    url: "/proveedores",
+    icon: Building,
+  },
+  {
+    title: "Pedidos de Compra",
+    url: "/pedidos-compra",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Recepciones",
+    url: "/recepciones",
+    icon: PackageCheck,
+  },
+  {
+    title: "Ubicaciones",
+    url: "/ubicaciones",
+    icon: MapPin,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -93,6 +120,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Compras & Almacén</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {comprasAlmacenItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild

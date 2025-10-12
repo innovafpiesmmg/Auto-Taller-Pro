@@ -21,6 +21,8 @@ export const estadoOrEnum = pgEnum("estado_or", ["abierta", "en_curso", "a_la_es
 export const tipoFacturaEnum = pgEnum("tipo_factura", ["proforma", "simplificada", "ordinaria", "rectificativa"]);
 export const metodoPagoEnum = pgEnum("metodo_pago", ["efectivo", "tarjeta", "transferencia", "bizum"]);
 export const rolEnum = pgEnum("rol", ["admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"]);
+export const estadoPedidoEnum = pgEnum("estado_pedido", ["pendiente", "enviado", "recibido_parcial", "recibido", "cancelado"]);
+export const tipoMovimientoEnum = pgEnum("tipo_movimiento", ["entrada", "salida", "ajuste", "recuento"]);
 
 // Usuarios y autenticación
 export const users = pgTable("users", {
@@ -215,6 +217,104 @@ export const cobros = pgTable("cobros", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Proveedores
+export const proveedores = pgTable("proveedores", {
+  id: serial("id").primaryKey(),
+  codigo: varchar("codigo", { length: 50 }).notNull().unique(),
+  nombre: varchar("nombre", { length: 200 }).notNull(),
+  nif: varchar("nif", { length: 20 }).notNull().unique(),
+  email: varchar("email", { length: 255 }),
+  telefono: varchar("telefono", { length: 20 }),
+  direccion: text("direccion"),
+  codigoPostal: varchar("codigo_postal", { length: 10 }),
+  ciudad: varchar("ciudad", { length: 100 }),
+  provincia: varchar("provincia", { length: 100 }),
+  contacto: varchar("contacto", { length: 100 }),
+  plazoEntrega: integer("plazo_entrega"),
+  notas: text("notas"),
+  activo: boolean("activo").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Pedidos a Proveedores
+export const pedidosCompra = pgTable("pedidos_compra", {
+  id: serial("id").primaryKey(),
+  numero: varchar("numero", { length: 50 }).notNull().unique(),
+  proveedorId: integer("proveedor_id").notNull().references(() => proveedores.id),
+  fecha: timestamp("fecha").notNull().defaultNow(),
+  fechaEntregaEstimada: timestamp("fecha_entrega_estimada"),
+  estado: estadoPedidoEnum("estado").notNull().default("pendiente"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  observaciones: text("observaciones"),
+  createdById: integer("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Líneas de Pedido
+export const lineasPedido = pgTable("lineas_pedido", {
+  id: serial("id").primaryKey(),
+  pedidoId: integer("pedido_id").notNull().references(() => pedidosCompra.id),
+  articuloId: integer("articulo_id").notNull().references(() => articulos.id),
+  cantidad: decimal("cantidad", { precision: 10, scale: 2 }).notNull(),
+  cantidadRecibida: decimal("cantidad_recibida", { precision: 10, scale: 2 }).default("0"),
+  precioUnitario: decimal("precio_unitario", { precision: 10, scale: 2 }).notNull(),
+  igic: decimal("igic", { precision: 5, scale: 2 }).default("7.00"),
+  importe: decimal("importe", { precision: 10, scale: 2 }).notNull(),
+});
+
+// Recepciones de Almacén
+export const recepciones = pgTable("recepciones", {
+  id: serial("id").primaryKey(),
+  numero: varchar("numero", { length: 50 }).notNull().unique(),
+  pedidoId: integer("pedido_id").references(() => pedidosCompra.id),
+  proveedorId: integer("proveedor_id").notNull().references(() => proveedores.id),
+  fecha: timestamp("fecha").notNull().defaultNow(),
+  albaranProveedor: varchar("albaran_proveedor", { length: 100 }),
+  recibidoPorId: integer("recibido_por_id").references(() => users.id),
+  observaciones: text("observaciones"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Líneas de Recepción
+export const lineasRecepcion = pgTable("lineas_recepcion", {
+  id: serial("id").primaryKey(),
+  recepcionId: integer("recepcion_id").notNull().references(() => recepciones.id),
+  articuloId: integer("articulo_id").notNull().references(() => articulos.id),
+  cantidad: decimal("cantidad", { precision: 10, scale: 2 }).notNull(),
+  ubicacionId: integer("ubicacion_id").references(() => ubicaciones.id),
+  lote: varchar("lote", { length: 50 }),
+  fechaCaducidad: timestamp("fecha_caducidad"),
+});
+
+// Ubicaciones de Almacén
+export const ubicaciones = pgTable("ubicaciones", {
+  id: serial("id").primaryKey(),
+  codigo: varchar("codigo", { length: 50 }).notNull().unique(),
+  nombre: varchar("nombre", { length: 100 }).notNull(),
+  tipo: varchar("tipo", { length: 50 }),
+  pasillo: varchar("pasillo", { length: 20 }),
+  estanteria: varchar("estanteria", { length: 20 }),
+  nivel: varchar("nivel", { length: 20 }),
+  activa: boolean("activa").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Movimientos de Almacén
+export const movimientosAlmacen = pgTable("movimientos_almacen", {
+  id: serial("id").primaryKey(),
+  articuloId: integer("articulo_id").notNull().references(() => articulos.id),
+  tipo: tipoMovimientoEnum("tipo").notNull(),
+  cantidad: decimal("cantidad", { precision: 10, scale: 2 }).notNull(),
+  ubicacionOrigenId: integer("ubicacion_origen_id").references(() => ubicaciones.id),
+  ubicacionDestinoId: integer("ubicacion_destino_id").references(() => ubicaciones.id),
+  referencia: varchar("referencia", { length: 100 }),
+  motivo: text("motivo"),
+  usuarioId: integer("usuario_id").references(() => users.id),
+  fecha: timestamp("fecha").notNull().defaultNow(),
+});
+
 // Relations
 export const clientesRelations = relations(clientes, ({ many }) => ({
   vehiculos: many(vehiculos),
@@ -341,6 +441,91 @@ export const cobrosRelations = relations(cobros, ({ one }) => ({
   }),
 }));
 
+export const proveedoresRelations = relations(proveedores, ({ many }) => ({
+  pedidos: many(pedidosCompra),
+  recepciones: many(recepciones),
+}));
+
+export const pedidosCompraRelations = relations(pedidosCompra, ({ one, many }) => ({
+  proveedor: one(proveedores, {
+    fields: [pedidosCompra.proveedorId],
+    references: [proveedores.id],
+  }),
+  createdBy: one(users, {
+    fields: [pedidosCompra.createdById],
+    references: [users.id],
+  }),
+  lineas: many(lineasPedido),
+  recepciones: many(recepciones),
+}));
+
+export const lineasPedidoRelations = relations(lineasPedido, ({ one }) => ({
+  pedido: one(pedidosCompra, {
+    fields: [lineasPedido.pedidoId],
+    references: [pedidosCompra.id],
+  }),
+  articulo: one(articulos, {
+    fields: [lineasPedido.articuloId],
+    references: [articulos.id],
+  }),
+}));
+
+export const recepcionesRelations = relations(recepciones, ({ one, many }) => ({
+  pedido: one(pedidosCompra, {
+    fields: [recepciones.pedidoId],
+    references: [pedidosCompra.id],
+  }),
+  proveedor: one(proveedores, {
+    fields: [recepciones.proveedorId],
+    references: [proveedores.id],
+  }),
+  recibidoPor: one(users, {
+    fields: [recepciones.recibidoPorId],
+    references: [users.id],
+  }),
+  lineas: many(lineasRecepcion),
+}));
+
+export const lineasRecepcionRelations = relations(lineasRecepcion, ({ one }) => ({
+  recepcion: one(recepciones, {
+    fields: [lineasRecepcion.recepcionId],
+    references: [recepciones.id],
+  }),
+  articulo: one(articulos, {
+    fields: [lineasRecepcion.articuloId],
+    references: [articulos.id],
+  }),
+  ubicacion: one(ubicaciones, {
+    fields: [lineasRecepcion.ubicacionId],
+    references: [ubicaciones.id],
+  }),
+}));
+
+export const ubicacionesRelations = relations(ubicaciones, ({ many }) => ({
+  lineasRecepcion: many(lineasRecepcion),
+  movimientosOrigen: many(movimientosAlmacen),
+  movimientosDestino: many(movimientosAlmacen),
+}));
+
+export const movimientosAlmacenRelations = relations(movimientosAlmacen, ({ one }) => ({
+  articulo: one(articulos, {
+    fields: [movimientosAlmacen.articuloId],
+    references: [articulos.id],
+  }),
+  ubicacionOrigen: one(ubicaciones, {
+    fields: [movimientosAlmacen.ubicacionOrigenId],
+    references: [ubicaciones.id],
+  }),
+  ubicacionDestino: one(ubicaciones, {
+    fields: [movimientosAlmacen.ubicacionDestinoId],
+    references: [ubicaciones.id],
+  }),
+  usuario: one(users, {
+    fields: [movimientosAlmacen.usuarioId],
+    references: [users.id],
+  }),
+}));
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -362,6 +547,13 @@ export const insertPresupuestoSchema = createInsertSchema(presupuestos).omit({ i
 export const insertFacturaSchema = createInsertSchema(facturas).omit({ id: true, createdAt: true });
 export const insertLineaFacturaSchema = createInsertSchema(lineasFactura).omit({ id: true });
 export const insertCobroSchema = createInsertSchema(cobros).omit({ id: true, createdAt: true });
+export const insertProveedorSchema = createInsertSchema(proveedores).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPedidoCompraSchema = createInsertSchema(pedidosCompra).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLineaPedidoSchema = createInsertSchema(lineasPedido).omit({ id: true });
+export const insertRecepcionSchema = createInsertSchema(recepciones).omit({ id: true, createdAt: true });
+export const insertLineaRecepcionSchema = createInsertSchema(lineasRecepcion).omit({ id: true });
+export const insertUbicacionSchema = createInsertSchema(ubicaciones).omit({ id: true, createdAt: true });
+export const insertMovimientoAlmacenSchema = createInsertSchema(movimientosAlmacen).omit({ id: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -388,3 +580,17 @@ export type LineaFactura = typeof lineasFactura.$inferSelect;
 export type InsertLineaFactura = z.infer<typeof insertLineaFacturaSchema>;
 export type Cobro = typeof cobros.$inferSelect;
 export type InsertCobro = z.infer<typeof insertCobroSchema>;
+export type Proveedor = typeof proveedores.$inferSelect;
+export type InsertProveedor = z.infer<typeof insertProveedorSchema>;
+export type PedidoCompra = typeof pedidosCompra.$inferSelect;
+export type InsertPedidoCompra = z.infer<typeof insertPedidoCompraSchema>;
+export type LineaPedido = typeof lineasPedido.$inferSelect;
+export type InsertLineaPedido = z.infer<typeof insertLineaPedidoSchema>;
+export type Recepcion = typeof recepciones.$inferSelect;
+export type InsertRecepcion = z.infer<typeof insertRecepcionSchema>;
+export type LineaRecepcion = typeof lineasRecepcion.$inferSelect;
+export type InsertLineaRecepcion = z.infer<typeof insertLineaRecepcionSchema>;
+export type Ubicacion = typeof ubicaciones.$inferSelect;
+export type InsertUbicacion = z.infer<typeof insertUbicacionSchema>;
+export type MovimientoAlmacen = typeof movimientosAlmacen.$inferSelect;
+export type InsertMovimientoAlmacen = z.infer<typeof insertMovimientoAlmacenSchema>;
