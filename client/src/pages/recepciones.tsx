@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, PackageCheck, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, PackageCheck, Pencil } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,13 +13,151 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Recepcion } from "@shared/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import type { Recepcion, Proveedor, PedidoCompra } from "@shared/schema";
+import { insertRecepcionSchema } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 
+const formSchema = insertRecepcionSchema.extend({
+  fecha: z.coerce.date(),
+  pedidoId: z.number().optional(),
+  recibidoPorId: z.number().optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 export default function Recepciones() {
+  const [open, setOpen] = useState(false);
+  const [editingRecepcion, setEditingRecepcion] = useState<Recepcion | null>(null);
+  const { toast } = useToast();
+
   const { data: recepciones, isLoading } = useQuery<Recepcion[]>({
     queryKey: ["/api/recepciones"],
   });
+
+  const { data: proveedores } = useQuery<Proveedor[]>({
+    queryKey: ["/api/proveedores"],
+  });
+
+  const { data: pedidos } = useQuery<PedidoCompra[]>({
+    queryKey: ["/api/pedidos-compra"],
+  });
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      numero: "",
+      pedidoId: undefined,
+      proveedorId: undefined,
+      fecha: new Date(),
+      albaranProveedor: "",
+      recibidoPorId: undefined,
+      observaciones: "",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: FormValues) => {
+      return await apiRequest("/api/recepciones", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/recepciones"] });
+      toast({
+        title: "Recepción creada",
+        description: "La recepción se ha creado correctamente",
+      });
+      handleCloseDialog();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo crear la recepción",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: FormValues) => {
+      if (!editingRecepcion) throw new Error("No hay recepción seleccionada");
+      return await apiRequest(`/api/recepciones/${editingRecepcion.id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/recepciones"] });
+      toast({
+        title: "Recepción actualizada",
+        description: "La recepción se ha actualizado correctamente",
+      });
+      handleCloseDialog();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo actualizar la recepción",
+      });
+    },
+  });
+
+  const handleEdit = (recepcion: Recepcion) => {
+    setEditingRecepcion(recepcion);
+    form.reset({
+      numero: recepcion.numero,
+      pedidoId: recepcion.pedidoId ?? undefined,
+      proveedorId: recepcion.proveedorId,
+      fecha: new Date(recepcion.fecha),
+      albaranProveedor: recepcion.albaranProveedor || "",
+      recibidoPorId: recepcion.recibidoPorId ?? undefined,
+      observaciones: recepcion.observaciones || "",
+    });
+    setOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpen(false);
+    setEditingRecepcion(null);
+    form.reset();
+  };
+
+  const onSubmit = (data: FormValues) => {
+    if (editingRecepcion) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
+    }
+  };
 
   const recepcionesData = recepciones || [];
 
@@ -29,7 +168,7 @@ export default function Recepciones() {
           <h1 className="text-3xl font-bold">Recepciones de Almacén</h1>
           <p className="text-muted-foreground">Registro de mercancía recibida</p>
         </div>
-        <Button data-testid="button-nueva-recepcion">
+        <Button onClick={() => setOpen(true)} data-testid="button-nueva-recepcion">
           <Plus className="h-4 w-4 mr-2" />
           Nueva Recepción
         </Button>
@@ -37,7 +176,7 @@ export default function Recepciones() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Recepciones</CardTitle>
             <PackageCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -47,7 +186,7 @@ export default function Recepciones() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Este Mes</CardTitle>
             <PackageCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -63,7 +202,7 @@ export default function Recepciones() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Hoy</CardTitle>
             <PackageCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -116,7 +255,7 @@ export default function Recepciones() {
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <PackageCheck className="h-12 w-12 mb-2 opacity-50" />
                         <p>No hay recepciones registradas</p>
-                        <Button variant="ghost" className="mt-2" data-testid="button-crear-primera-recepcion">
+                        <Button variant="ghost" className="mt-2" onClick={() => setOpen(true)} data-testid="button-crear-primera-recepcion">
                           Crear la primera recepción
                         </Button>
                       </div>
@@ -132,10 +271,10 @@ export default function Recepciones() {
                         {format(new Date(recepcion.fecha), 'dd/MM/yyyy HH:mm')}
                       </TableCell>
                       <TableCell data-testid={`text-proveedor-${recepcion.id}`}>
-                        Proveedor #{recepcion.proveedorId}
+                        {proveedores?.find(p => p.id === recepcion.proveedorId)?.nombre || `Proveedor #${recepcion.proveedorId}`}
                       </TableCell>
                       <TableCell data-testid={`text-pedido-${recepcion.id}`}>
-                        {recepcion.pedidoId ? `Pedido #${recepcion.pedidoId}` : '-'}
+                        {recepcion.pedidoId ? pedidos?.find(p => p.id === recepcion.pedidoId)?.numero || `Pedido #${recepcion.pedidoId}` : '-'}
                       </TableCell>
                       <TableCell data-testid={`text-albaran-${recepcion.id}`}>
                         {recepcion.albaranProveedor || '-'}
@@ -144,8 +283,8 @@ export default function Recepciones() {
                         {recepcion.recibidoPorId ? `Usuario #${recepcion.recibidoPorId}` : '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" data-testid={`button-ver-${recepcion.id}`}>
-                          <Eye className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(recepcion)} data-testid={`button-editar-${recepcion.id}`}>
+                          <Pencil className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -156,6 +295,156 @@ export default function Recepciones() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={open} onOpenChange={(open) => { if (open) setOpen(true); else handleCloseDialog(); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRecepcion ? 'Editar Recepción' : 'Nueva Recepción'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="numero"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número de Recepción*</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-numero" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="fecha"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha*</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="datetime-local"
+                          value={field.value && !isNaN(field.value.getTime()) ? format(field.value, "yyyy-MM-dd'T'HH:mm") : ''}
+                          onChange={(e) => {
+                            const newDate = new Date(e.target.value);
+                            if (!isNaN(newDate.getTime())) {
+                              field.onChange(newDate);
+                            }
+                          }}
+                          data-testid="input-fecha"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="proveedorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proveedor*</FormLabel>
+                      <Select
+                        value={field.value?.toString()}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-proveedor">
+                            <SelectValue placeholder="Selecciona un proveedor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {proveedores?.filter(p => p.activo).map(proveedor => (
+                            <SelectItem key={proveedor.id} value={proveedor.id.toString()}>
+                              {proveedor.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="pedidoId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pedido (opcional)</FormLabel>
+                      <Select
+                        value={field.value?.toString() || 'none'}
+                        onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-pedido">
+                            <SelectValue placeholder="Selecciona un pedido" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Sin pedido</SelectItem>
+                          {pedidos?.map(pedido => (
+                            <SelectItem key={pedido.id} value={pedido.id.toString()}>
+                              {pedido.numero} - {proveedores?.find(p => p.id === pedido.proveedorId)?.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="albaranProveedor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Albarán del Proveedor</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} data-testid="input-albaran" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="observaciones"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Observaciones</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} value={field.value || ''} data-testid="input-observaciones" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={handleCloseDialog} data-testid="button-cancelar">
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-guardar">
+                  {createMutation.isPending || updateMutation.isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
