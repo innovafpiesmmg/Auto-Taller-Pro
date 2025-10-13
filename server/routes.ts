@@ -199,6 +199,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/clientes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCliente(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vehículos routes
   app.get("/api/vehiculos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
@@ -248,6 +258,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(vehiculo);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/vehiculos/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteVehiculo(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -302,6 +322,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/citas/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCita(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Órdenes de Reparación routes
   app.get("/api/ordenes", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
     try {
@@ -347,6 +377,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(orden);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/ordenes/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteOrdenReparacion(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -417,6 +457,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(articulo);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/articulos/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteArticulo(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -491,6 +541,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/presupuestos/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertPresupuestoSchema.partial().parse(req.body);
+      const presupuesto = await storage.updatePresupuesto(id, validated);
+      if (!presupuesto) {
+        return res.status(404).json({ error: "Presupuesto no encontrado" });
+      }
+      res.json(presupuesto);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/presupuestos/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deletePresupuesto(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Facturas routes
   app.get("/api/facturas", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
@@ -535,6 +609,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/facturas/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertFacturaSchema.partial().parse(req.body);
+      const factura = await storage.updateFactura(id, validated);
+      if (!factura) {
+        return res.status(404).json({ error: "Factura no encontrada" });
+      }
+      res.json(factura);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/facturas/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteFactura(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Cobros routes
   app.get("/api/cobros", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
@@ -553,6 +651,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(cobro);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/cobros/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = insertCobroSchema.partial().parse(req.body);
+      const cobro = await storage.updateCobro(id, validated);
+      if (!cobro) {
+        return res.status(404).json({ error: "Cobro no encontrado" });
+      }
+      res.json(cobro);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/cobros/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCobro(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

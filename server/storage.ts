@@ -103,6 +103,7 @@ export interface IStorage {
   getCliente(id: number): Promise<Cliente | undefined>;
   createCliente(cliente: InsertCliente): Promise<Cliente>;
   updateCliente(id: number, cliente: Partial<InsertCliente>): Promise<Cliente | undefined>;
+  deleteCliente(id: number): Promise<void>;
   
   // Vehículos
   getVehiculos(search?: string): Promise<Vehiculo[]>;
@@ -110,18 +111,21 @@ export interface IStorage {
   getVehiculosByCliente(clienteId: number): Promise<Vehiculo[]>;
   createVehiculo(vehiculo: InsertVehiculo): Promise<Vehiculo>;
   updateVehiculo(id: number, vehiculo: Partial<InsertVehiculo>): Promise<Vehiculo | undefined>;
+  deleteVehiculo(id: number): Promise<void>;
   
   // Citas
   getCitas(from?: Date, to?: Date): Promise<Cita[]>;
   getCita(id: number): Promise<Cita | undefined>;
   createCita(cita: InsertCita): Promise<Cita>;
   updateCita(id: number, cita: Partial<InsertCita>): Promise<Cita | undefined>;
+  deleteCita(id: number): Promise<void>;
   
   // Órdenes de Reparación
   getOrdenesReparacion(estado?: string): Promise<OrdenReparacion[]>;
   getOrdenReparacion(id: number): Promise<OrdenReparacion | undefined>;
   createOrdenReparacion(or: InsertOrdenReparacion): Promise<OrdenReparacion>;
   updateOrdenReparacion(id: number, or: Partial<InsertOrdenReparacion>): Promise<OrdenReparacion | undefined>;
+  deleteOrdenReparacion(id: number): Promise<void>;
   
   // Partes de Trabajo
   getPartesTrabajo(orId: number): Promise<ParteTrabajo[]>;
@@ -132,6 +136,7 @@ export interface IStorage {
   getArticulo(id: number): Promise<Articulo | undefined>;
   createArticulo(articulo: InsertArticulo): Promise<Articulo>;
   updateArticulo(id: number, articulo: Partial<InsertArticulo>): Promise<Articulo | undefined>;
+  deleteArticulo(id: number): Promise<void>;
   
   // Consumos
   getConsumosArticulos(orId: number): Promise<ConsumoArticulo[]>;
@@ -142,17 +147,23 @@ export interface IStorage {
   getPresupuesto(id: number): Promise<Presupuesto | undefined>;
   createPresupuesto(presupuesto: InsertPresupuesto): Promise<Presupuesto>;
   updatePresupuesto(id: number, presupuesto: Partial<InsertPresupuesto>): Promise<Presupuesto | undefined>;
+  deletePresupuesto(id: number): Promise<void>;
   
   // Facturas
   getFacturas(): Promise<Factura[]>;
   getFactura(id: number): Promise<Factura | undefined>;
   createFactura(factura: InsertFactura): Promise<Factura>;
+  updateFactura(id: number, factura: Partial<InsertFactura>): Promise<Factura | undefined>;
+  deleteFactura(id: number): Promise<void>;
   getLineasFactura(facturaId: number): Promise<LineaFactura[]>;
   createLineaFactura(linea: InsertLineaFactura): Promise<LineaFactura>;
   
   // Cobros
   getCobros(facturaId?: number): Promise<Cobro[]>;
+  getCobro(id: number): Promise<Cobro | undefined>;
   createCobro(cobro: InsertCobro): Promise<Cobro>;
+  updateCobro(id: number, cobro: Partial<InsertCobro>): Promise<Cobro | undefined>;
+  deleteCobro(id: number): Promise<void>;
   
   // Proveedores
   getProveedores(search?: string): Promise<Proveedor[]>;
@@ -319,6 +330,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteCliente(id: number): Promise<void> {
+    await db.delete(clientes).where(eq(clientes.id, id));
+  }
+
   // Vehículos
   async getVehiculos(search?: string): Promise<Vehiculo[]> {
     if (search) {
@@ -357,6 +372,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteVehiculo(id: number): Promise<void> {
+    await db.delete(vehiculos).where(eq(vehiculos.id, id));
+  }
+
   // Citas
   async getCitas(from?: Date, to?: Date): Promise<Cita[]> {
     if (from && to) {
@@ -389,6 +408,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteCita(id: number): Promise<void> {
+    await db.delete(citas).where(eq(citas.id, id));
+  }
+
   // Órdenes de Reparación
   async getOrdenesReparacion(estado?: string): Promise<OrdenReparacion[]> {
     if (estado) {
@@ -416,6 +439,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ordenesReparacion.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deleteOrdenReparacion(id: number): Promise<void> {
+    await db.delete(ordenesReparacion).where(eq(ordenesReparacion.id, id));
   }
 
   // Partes de Trabajo
@@ -461,6 +488,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deleteArticulo(id: number): Promise<void> {
+    await db.delete(articulos).where(eq(articulos.id, id));
+  }
+
   // Consumos
   async getConsumosArticulos(orId: number): Promise<ConsumoArticulo[]> {
     return await db.select().from(consumosArticulos).where(eq(consumosArticulos.orId, orId));
@@ -495,6 +526,10 @@ export class DatabaseStorage implements IStorage {
     return updated || undefined;
   }
 
+  async deletePresupuesto(id: number): Promise<void> {
+    await db.delete(presupuestos).where(eq(presupuestos.id, id));
+  }
+
   // Facturas
   async getFacturas(): Promise<Factura[]> {
     return await db.select().from(facturas).orderBy(desc(facturas.createdAt));
@@ -508,6 +543,19 @@ export class DatabaseStorage implements IStorage {
   async createFactura(factura: InsertFactura): Promise<Factura> {
     const [newFactura] = await db.insert(facturas).values(factura).returning();
     return newFactura;
+  }
+
+  async updateFactura(id: number, factura: Partial<InsertFactura>): Promise<Factura | undefined> {
+    const [updated] = await db
+      .update(facturas)
+      .set(factura)
+      .where(eq(facturas.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteFactura(id: number): Promise<void> {
+    await db.delete(facturas).where(eq(facturas.id, id));
   }
 
   async getLineasFactura(facturaId: number): Promise<LineaFactura[]> {
@@ -527,9 +575,27 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(cobros).orderBy(desc(cobros.createdAt));
   }
 
+  async getCobro(id: number): Promise<Cobro | undefined> {
+    const [cobro] = await db.select().from(cobros).where(eq(cobros.id, id));
+    return cobro || undefined;
+  }
+
   async createCobro(cobro: InsertCobro): Promise<Cobro> {
     const [newCobro] = await db.insert(cobros).values(cobro).returning();
     return newCobro;
+  }
+
+  async updateCobro(id: number, cobro: Partial<InsertCobro>): Promise<Cobro | undefined> {
+    const [updated] = await db
+      .update(cobros)
+      .set(cobro)
+      .where(eq(cobros.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCobro(id: number): Promise<void> {
+    await db.delete(cobros).where(eq(cobros.id, id));
   }
 
   // Proveedores
