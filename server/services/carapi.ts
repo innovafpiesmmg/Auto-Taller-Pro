@@ -131,6 +131,30 @@ export class CarAPIService {
       headers,
     });
 
+    // Si falla con 401/403, invalidar JWT caché y reintentar una vez
+    if ((response.status === 401 || response.status === 403) && jwt) {
+      console.log('CarAPI JWT invalidado, reintentando con nuevo token...');
+      this.jwtToken = null;
+      this.jwtExpiry = 0;
+      
+      // Reintentar con nuevo JWT
+      const newJwt = await this.ensureJWT();
+      if (newJwt) {
+        headers['Authorization'] = `Bearer ${newJwt}`;
+        const retryResponse = await fetch(`${CARAPI_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+        });
+
+        if (!retryResponse.ok) {
+          const errorText = await retryResponse.text();
+          throw new Error(`CarAPI error: ${retryResponse.status} ${errorText}`);
+        }
+
+        return await retryResponse.json();
+      }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`CarAPI error: ${response.status} ${errorText}`);

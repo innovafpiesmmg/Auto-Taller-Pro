@@ -9,6 +9,35 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## Recent Changes (Latest)
+### 2025-10-13: Integración CarAPI COMPLETADA (Backend + Configuración)
+- ✅ **Backend CarAPI Completo**:
+  - Tabla `config_sistema` para credenciales (CARAPI_TOKEN, CARAPI_SECRET)
+  - Servicio `CarAPIService` con JWT caching inteligente (auto-renovación 7 días)
+  - **Fix crítico**: Detección 401/403 invalida JWT caché y reintenta automáticamente
+  - Modo gratuito (sin auth, Ford/Toyota 2020) y modo premium (con JWT, 90k+ vehículos)
+  - Métodos: getMakes(), getModels(), getYears(), decodeVIN()
+- ✅ **Endpoints implementados**:
+  - GET `/api/config/carapi` (admin - verificar estado configuración)
+  - PUT `/api/config/carapi` (admin - guardar token/secret)
+  - GET `/api/carapi/makes?year=` (proxy)
+  - GET `/api/carapi/models?makeId=&year=` (proxy)
+  - GET `/api/carapi/years` (proxy)
+  - GET `/api/carapi/vin/:vin` (decodificación VIN)
+- ✅ **Storage methods**: getConfigSistema(), setConfigSistema(), updateConfigSistema()
+- ✅ **Schema actualizado**: 
+  - Tabla `config_sistema` (clave, valor, descripcion)
+  - Vehículos con campos opcionales CarAPI (carapi_trim, carapi_engine_type, carapi_engine_cylinders, etc.)
+- ✅ **Frontend Configuración**:
+  - Página `/configuracion` con formulario admin (token/secret)
+  - Estado visible (Configurado/No configurado)
+  - Instrucciones para obtener credenciales
+  - Integrado en App.tsx y sidebar
+- ❌ **Pendiente**:
+  - Autocompletado marca/modelo en formulario vehículos
+  - Botón búsqueda VIN en formulario vehículos
+  - Tests e2e de la integración
+
+## Recent Changes (Latest)
 ### 2025-10-13: Dashboard con Actualización en Tiempo Real y Lista de Citas/Órdenes
 - ✅ Dashboard se actualiza automáticamente cada 5 segundos
 - ✅ Agregado tipo TypeScript `DashboardStats` para type safety
