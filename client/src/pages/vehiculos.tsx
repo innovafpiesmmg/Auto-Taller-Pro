@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Car, Edit, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Car, Edit, Trash2, Leaf } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -62,6 +63,10 @@ export default function Vehiculos() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVehiculo, setEditingVehiculo] = useState<Vehiculo | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [etiquetaDGT, setEtiquetaDGT] = useState<{
+    etiqueta: string;
+    info: { nombre: string; color: string; descripcion: string };
+  } | null>(null);
   const { toast } = useToast();
 
   const { data: vehiculos, isLoading } = useQuery<Vehiculo[]>({
@@ -104,6 +109,7 @@ export default function Vehiculos() {
   });
 
   const handleOpenDialog = (vehiculo?: Vehiculo) => {
+    setEtiquetaDGT(null); // Reset etiqueta al abrir diálogo
     if (vehiculo) {
       setEditingVehiculo(vehiculo);
       form.reset({
@@ -121,6 +127,13 @@ export default function Vehiculos() {
         color: vehiculo.color || "",
         observaciones: vehiculo.observaciones || "",
       });
+      // Si el vehículo ya tiene etiqueta ambiental, mostrarla
+      if (vehiculo.etiquetaAmbiental) {
+        setEtiquetaDGT({
+          etiqueta: vehiculo.etiquetaAmbiental,
+          info: getEtiquetaInfo(vehiculo.etiquetaAmbiental),
+        });
+      }
     } else {
       setEditingVehiculo(null);
       form.reset({
@@ -145,7 +158,44 @@ export default function Vehiculos() {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingVehiculo(null);
+    setEtiquetaDGT(null);
     form.reset();
+  };
+
+  // Helper para obtener info de etiqueta desde el frontend
+  const getEtiquetaInfo = (etiqueta: string) => {
+    switch (etiqueta) {
+      case 'CERO':
+        return {
+          nombre: 'CERO EMISIONES',
+          color: 'blue',
+          descripcion: 'Vehículo eléctrico puro o híbrido enchufable con autonomía >40km',
+        };
+      case 'ECO':
+        return {
+          nombre: 'ECO',
+          color: 'eco', // Verde/azul distintivo dual
+          descripcion: 'Vehículo híbrido, GNC o GLP',
+        };
+      case 'C':
+        return {
+          nombre: 'C',
+          color: 'green', // Solo verde
+          descripcion: 'Gasolina desde 2006 o diésel desde 2014',
+        };
+      case 'B':
+        return {
+          nombre: 'B',
+          color: 'yellow',
+          descripcion: 'Gasolina 2001-2005 o diésel 2006-2013',
+        };
+      default:
+        return {
+          nombre: 'SIN DISTINTIVO',
+          color: 'gray',
+          descripcion: 'Vehículo sin etiqueta ambiental',
+        };
+    }
   };
 
   const createMutation = useMutation({
@@ -220,6 +270,29 @@ export default function Vehiculos() {
     },
   });
 
+  const calcularEtiquetaMutation = useMutation({
+    mutationFn: async (id: number) =>
+      await apiRequest<{
+        etiqueta: string;
+        info: { nombre: string; color: string; descripcion: string };
+      }>(`/api/vehiculos/${id}/etiqueta-dgt`),
+    onSuccess: (data) => {
+      setEtiquetaDGT(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/vehiculos"] });
+      toast({
+        title: "Etiqueta calculada",
+        description: `Etiqueta ambiental: ${data.info.nombre}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo calcular la etiqueta",
+      });
+    },
+  });
+
   const onSubmit = (data: FormValues) => {
     if (editingVehiculo) {
       updateMutation.mutate(data);
@@ -282,6 +355,7 @@ export default function Vehiculos() {
                   <TableHead>Marca</TableHead>
                   <TableHead>Modelo</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Etiqueta DGT</TableHead>
                   <TableHead>Kilómetros</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -294,13 +368,14 @@ export default function Vehiculos() {
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                     </TableRow>
                   ))
                 ) : filteredVehiculos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Car className="h-12 w-12 mb-2 opacity-50" />
                         <p>No hay vehículos registrados</p>
@@ -324,6 +399,31 @@ export default function Vehiculos() {
                       <TableCell>{vehiculo.marca}</TableCell>
                       <TableCell>{vehiculo.modelo}</TableCell>
                       <TableCell>{getClienteNombre(vehiculo.clienteId)}</TableCell>
+                      <TableCell>
+                        {vehiculo.etiquetaAmbiental ? (
+                          <Badge 
+                            variant={
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'blue' ? 'default' :
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'eco' ? 'default' :
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'green' ? 'default' :
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'yellow' ? 'secondary' :
+                              'outline'
+                            }
+                            className={
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'blue' ? 'bg-blue-500' :
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'eco' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'green' ? 'bg-green-600' :
+                              getEtiquetaInfo(vehiculo.etiquetaAmbiental).color === 'yellow' ? 'bg-yellow-500 text-black' :
+                              ''
+                            }
+                            data-testid={`badge-etiqueta-${vehiculo.id}`}
+                          >
+                            {getEtiquetaInfo(vehiculo.etiquetaAmbiental).nombre}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>{vehiculo.km ? `${vehiculo.km} km` : "-"}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button 
@@ -592,6 +692,65 @@ export default function Vehiculos() {
                   </FormItem>
                 )}
               />
+
+              {/* Etiqueta Ambiental DGT */}
+              {editingVehiculo && (
+                <div className="p-4 border rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Leaf className="w-5 h-5 text-green-600" />
+                      <div>
+                        <h4 className="font-semibold text-sm">Etiqueta Ambiental DGT</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Calculada según año y combustible
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {etiquetaDGT && (
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge 
+                            variant={
+                              etiquetaDGT.info.color === 'blue' ? 'default' :
+                              etiquetaDGT.info.color === 'eco' ? 'default' :
+                              etiquetaDGT.info.color === 'green' ? 'default' :
+                              etiquetaDGT.info.color === 'yellow' ? 'secondary' :
+                              'outline'
+                            }
+                            className={
+                              etiquetaDGT.info.color === 'blue' ? 'bg-blue-500' :
+                              etiquetaDGT.info.color === 'eco' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
+                              etiquetaDGT.info.color === 'green' ? 'bg-green-600' :
+                              etiquetaDGT.info.color === 'yellow' ? 'bg-yellow-500 text-black' :
+                              ''
+                            }
+                            data-testid="badge-etiqueta-dgt"
+                          >
+                            {etiquetaDGT.info.nombre}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {etiquetaDGT.info.descripcion}
+                          </span>
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => editingVehiculo && calcularEtiquetaMutation.mutate(editingVehiculo.id)}
+                        disabled={
+                          !form.watch("año") || 
+                          !form.watch("combustible") || 
+                          calcularEtiquetaMutation.isPending
+                        }
+                        data-testid="button-calcular-etiqueta-dgt"
+                      >
+                        {calcularEtiquetaMutation.isPending ? "Calculando..." : "Calcular Etiqueta"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button

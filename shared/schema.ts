@@ -93,6 +93,8 @@ export const vehiculos = pgTable("vehiculos", {
   carapiFuelType: varchar("carapi_fuel_type", { length: 50 }),
   carapiMpgCity: varchar("carapi_mpg_city", { length: 50 }),
   carapiMpgHighway: varchar("carapi_mpg_highway", { length: 50 }),
+  // Etiqueta ambiental DGT
+  etiquetaAmbiental: varchar("etiqueta_ambiental", { length: 20 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

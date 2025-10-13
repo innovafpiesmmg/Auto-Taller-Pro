@@ -9,6 +9,22 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## Recent Changes (Latest)
+### 2025-10-13: Integración Etiquetas Ambientales DGT COMPLETADA
+- ✅ **Backend DGTService (server/services/dgt.ts)**:
+  - Cálculo automático de etiquetas DGT según normativa española
+  - Reglas implementadas: CERO (eléctricos, PHEV >40km), ECO (híbridos, GNC, GLP, PHEV ≤40km), C (gasolina 2006+, diésel 2014+), B (gasolina 2001-2005, diésel 2006-2013), SIN_DISTINTIVO
+  - Método getEtiquetaInfo() con nombre, color y descripción
+- ✅ **Endpoint API**:
+  - GET `/api/vehiculos/:id/etiqueta-dgt` calcula y actualiza etiqueta
+  - Protegido con RBAC (admin, jefe_taller, recepcion, mecanico)
+- ✅ **Frontend (client/src/pages/vehiculos.tsx)**:
+  - Botón "Calcular Etiqueta" en formulario de edición (requiere año + combustible)
+  - Badge visual con gradiente verde-azul para ECO, colores específicos según normativa
+  - Columna "Etiqueta DGT" en listado con badges de colores
+  - Tooltip con descripción de cada etiqueta
+- ✅ **Schema actualizado**: Campo `etiqueta_ambiental` en tabla vehiculos
+- ✅ **Fix normativa**: Híbridos enchufables con autonomía ≤40km reciben ECO correctamente
+
 ### 2025-10-13: Integración CarAPI COMPLETADA (Backend + Configuración)
 - ✅ **Backend CarAPI Completo**:
   - Tabla `config_sistema` para credenciales (CARAPI_TOKEN, CARAPI_SECRET)
@@ -35,7 +51,7 @@ Ask before making major changes.
 - ❌ **Pendiente**:
   - Autocompletado marca/modelo en formulario vehículos
   - Botón búsqueda VIN en formulario vehículos
-  - Tests e2e de la integración
+  - Tests e2e de las integraciones
 
 ## Recent Changes (Latest)
 ### 2025-10-13: Dashboard con Actualización en Tiempo Real y Lista de Citas/Órdenes

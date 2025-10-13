@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { CarAPIService } from "./services/carapi";
+import { DGTService } from "./services/dgt";
 import { 
   insertUserSchema,
   insertClienteSchema,
@@ -311,6 +312,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteVehiculo(id);
       res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Calcular etiqueta ambiental DGT de un vehículo
+  app.get("/api/vehiculos/:id/etiqueta-dgt", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vehiculo = await storage.getVehiculo(id);
+      
+      if (!vehiculo) {
+        return res.status(404).json({ error: "Vehículo no encontrado" });
+      }
+
+      const etiqueta = DGTService.calcularEtiqueta({
+        año: vehiculo.año,
+        combustible: vehiculo.combustible,
+      });
+
+      const info = DGTService.getEtiquetaInfo(etiqueta);
+
+      // Actualizar el vehículo con la etiqueta calculada
+      await storage.updateVehiculo(id, { etiquetaAmbiental: etiqueta });
+
+      res.json({
+        etiqueta,
+        info,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
