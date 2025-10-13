@@ -34,6 +34,7 @@ import GestoresResiduos from "@/pages/gestores-residuos";
 import RegistrosResiduos from "@/pages/registros-residuos";
 import DocumentosDI from "@/pages/documentos-di";
 import RecogidasResiduos from "@/pages/recogidas-residuos";
+import Configuracion from "@/pages/configuracion";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -108,6 +109,7 @@ function ProtectedRouter() {
               <Route path="/registros-residuos" component={RegistrosResiduos} />
               <Route path="/documentos-di" component={DocumentosDI} />
               <Route path="/recogidas-residuos" component={RecogidasResiduos} />
+              <Route path="/configuracion" component={Configuracion} />
               <Route component={NotFound} />
             </Switch>
           </main>

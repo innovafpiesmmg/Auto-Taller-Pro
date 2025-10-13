@@ -163,6 +163,11 @@ const configuracionItems = [
     url: "/usuarios",
     icon: Shield,
   },
+  {
+    title: "Configuración",
+    url: "/configuracion",
+    icon: Settings,
+  },
 ];
 
 export function AppSidebar() {
