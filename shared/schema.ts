@@ -496,6 +496,23 @@ export const configSistema = pgTable("config_sistema", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Configuración de Empresa (Branding)
+export const configEmpresa = pgTable("config_empresa", {
+  id: serial("id").primaryKey(),
+  nombreEmpresa: varchar("nombre_empresa", { length: 200 }).notNull(),
+  cifNif: varchar("cif_nif", { length: 20 }),
+  direccion: text("direccion"),
+  codigoPostal: varchar("codigo_postal", { length: 10 }),
+  ciudad: varchar("ciudad", { length: 100 }),
+  provincia: varchar("provincia", { length: 100 }),
+  telefono: varchar("telefono", { length: 20 }),
+  email: varchar("email", { length: 255 }),
+  web: varchar("web", { length: 255 }),
+  logoUrl: text("logo_url"),
+  colorPrimario: varchar("color_primario", { length: 20 }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Relations
 export const clientesRelations = relations(clientes, ({ many }) => ({
   vehiculos: many(vehiculos),
@@ -922,3 +939,10 @@ export type RecogidaResiduo = typeof recogidasResiduos.$inferSelect;
 export type InsertRecogidaResiduo = z.infer<typeof insertRecogidaResiduoSchema>;
 export type ConfigSistema = typeof configSistema.$inferSelect;
 export type InsertConfigSistema = z.infer<typeof insertConfigSistemaSchema>;
+
+export const insertConfigEmpresaSchema = createInsertSchema(configEmpresa).omit({
+  id: true,
+  updatedAt: true,
+});
+export type ConfigEmpresa = typeof configEmpresa.$inferSelect;
+export type InsertConfigEmpresa = z.infer<typeof insertConfigEmpresaSchema>;
