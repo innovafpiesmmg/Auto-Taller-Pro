@@ -82,6 +82,17 @@ export const vehiculos = pgTable("vehiculos", {
   seguro: varchar("seguro", { length: 100 }),
   color: varchar("color", { length: 50 }),
   observaciones: text("observaciones"),
+  // Campos adicionales de CarAPI (opcionales)
+  carapiTrim: varchar("carapi_trim", { length: 200 }),
+  carapiEngineType: varchar("carapi_engine_type", { length: 100 }),
+  carapiEngineCylinders: integer("carapi_engine_cylinders"),
+  carapiEngineDisplacement: varchar("carapi_engine_displacement", { length: 50 }),
+  carapiHorsepower: integer("carapi_horsepower"),
+  carapiTransmissionType: varchar("carapi_transmission_type", { length: 100 }),
+  carapiDriveType: varchar("carapi_drive_type", { length: 50 }),
+  carapiFuelType: varchar("carapi_fuel_type", { length: 50 }),
+  carapiMpgCity: varchar("carapi_mpg_city", { length: 50 }),
+  carapiMpgHighway: varchar("carapi_mpg_highway", { length: 50 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -474,6 +485,15 @@ export const recogidasResiduos = pgTable("recogidas_residuos", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Configuración del Sistema
+export const configSistema = pgTable("config_sistema", {
+  id: serial("id").primaryKey(),
+  clave: varchar("clave", { length: 100 }).notNull().unique(),
+  valor: text("valor"),
+  descripcion: text("descripcion"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Relations
 export const clientesRelations = relations(clientes, ({ many }) => ({
   vehiculos: many(vehiculos),
@@ -837,6 +857,7 @@ export const insertGestorResiduoSchema = createInsertSchema(gestoresResiduos).om
 export const insertRegistroResiduoSchema = createInsertSchema(registrosResiduos).omit({ id: true, createdAt: true });
 export const insertDocumentoDISchema = createInsertSchema(documentosDI).omit({ id: true, createdAt: true });
 export const insertRecogidaResiduoSchema = createInsertSchema(recogidasResiduos).omit({ id: true, createdAt: true });
+export const insertConfigSistemaSchema = createInsertSchema(configSistema).omit({ id: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -897,3 +918,5 @@ export type DocumentoDI = typeof documentosDI.$inferSelect;
 export type InsertDocumentoDI = z.infer<typeof insertDocumentoDISchema>;
 export type RecogidaResiduo = typeof recogidasResiduos.$inferSelect;
 export type InsertRecogidaResiduo = z.infer<typeof insertRecogidaResiduoSchema>;
+export type ConfigSistema = typeof configSistema.$inferSelect;
+export type InsertConfigSistema = z.infer<typeof insertConfigSistemaSchema>;
