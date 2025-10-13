@@ -1,226 +1,56 @@
 # DMS Taller Mecánico - Sistema Integral de Gestión
 
 ## Overview
-DMS (Dealer Management System) for automotive repair shops, specifically designed for the Canary Islands, complying with IGIC tax regulations. The system manages the entire service lifecycle: appointment scheduling, active reception, quotes, repair orders, inventory, invoicing, payments, CRM, waste management, and purchasing. Its goal is to optimize workshop operations, improve customer satisfaction, and ensure regulatory compliance.
+DMS (Dealer Management System) for automotive repair shops, designed for the Canary Islands, complying with IGIC tax regulations. The system manages the entire service lifecycle: appointment scheduling, active reception, quotes, repair orders, inventory, invoicing, payments, CRM, waste management, and purchasing. Its goal is to optimize workshop operations, improve customer satisfaction, and ensure regulatory compliance.
 
 ## User Preferences
 I want iterative development.
 I prefer detailed explanations.
 Ask before making major changes.
 
-## Recent Changes (Latest)
-### 2025-10-13: Integración Etiquetas Ambientales DGT COMPLETADA ✅
-- ✅ **Backend DGTService (server/services/dgt.ts)**:
-  - Cálculo automático de etiquetas DGT según normativa española
-  - Reglas implementadas: CERO (eléctricos, PHEV >40km), ECO (híbridos, GNC, GLP, PHEV ≤40km), C (gasolina 2006+, diésel 2014+), B (gasolina 2001-2005, diésel 2006-2013), SIN_DISTINTIVO
-  - Método getEtiquetaInfo() con nombre, color y descripción
-  - Colores diferenciados: ECO→"eco", C→"green", B→"yellow", CERO→"blue", SIN_DISTINTIVO→"gray"
-- ✅ **Endpoint API**:
-  - GET `/api/vehiculos/:id/etiqueta-dgt` calcula y actualiza etiqueta
-  - Protegido con RBAC (admin, jefe_taller, recepcion, mecanico)
-- ✅ **Frontend (client/src/pages/vehiculos.tsx)**:
-  - Botón "Calcular Etiqueta" en formulario de edición (requiere año + combustible)
-  - Badges con colores oficiales DGT:
-    - ECO: Gradiente verde-azul (bg-gradient-to-r from-green-500 to-blue-500)
-    - CERO: Azul sólido (bg-blue-500)
-    - C: Verde sólido (bg-green-600)
-    - B: Amarillo (bg-yellow-500)
-  - Columna "Etiqueta DGT" en listado con badges de colores
-  - Tooltip con descripción de cada etiqueta
-- ✅ **Schema actualizado**: Campo `etiqueta_ambiental` en tabla vehiculos (migración aplicada)
-- ✅ **Fix normativa**: Híbridos enchufables con autonomía ≤40km reciben ECO correctamente
-- ✅ **Testing**: Test e2e exitoso (vehículo id=1 año 2021 Híbrido → ECO)
-
-### 2025-10-13: Integración CarAPI COMPLETADA (Backend + Configuración)
-- ✅ **Backend CarAPI Completo**:
-  - Tabla `config_sistema` para credenciales (CARAPI_TOKEN, CARAPI_SECRET)
-  - Servicio `CarAPIService` con JWT caching inteligente (auto-renovación 7 días)
-  - **Fix crítico**: Detección 401/403 invalida JWT caché y reintenta automáticamente
-  - Modo gratuito (sin auth, Ford/Toyota 2020) y modo premium (con JWT, 90k+ vehículos)
-  - Métodos: getMakes(), getModels(), getYears(), decodeVIN()
-- ✅ **Endpoints implementados**:
-  - GET `/api/config/carapi` (admin - verificar estado configuración)
-  - PUT `/api/config/carapi` (admin - guardar token/secret)
-  - GET `/api/carapi/makes?year=` (proxy)
-  - GET `/api/carapi/models?makeId=&year=` (proxy)
-  - GET `/api/carapi/years` (proxy)
-  - GET `/api/carapi/vin/:vin` (decodificación VIN)
-- ✅ **Storage methods**: getConfigSistema(), setConfigSistema(), updateConfigSistema()
-- ✅ **Schema actualizado**: 
-  - Tabla `config_sistema` (clave, valor, descripcion)
-  - Vehículos con campos opcionales CarAPI (carapi_trim, carapi_engine_type, carapi_engine_cylinders, etc.)
-- ✅ **Frontend Configuración**:
-  - Página `/configuracion` con formulario admin (token/secret)
-  - Estado visible (Configurado/No configurado)
-  - Instrucciones para obtener credenciales
-  - Integrado en App.tsx y sidebar
-- ❌ **Pendiente**:
-  - Autocompletado marca/modelo en formulario vehículos
-  - Botón búsqueda VIN en formulario vehículos
-  - Tests e2e de las integraciones
-
-## Recent Changes (Latest)
-### 2025-10-13: Dashboard con Actualización en Tiempo Real y Lista de Citas/Órdenes
-- ✅ Dashboard se actualiza automáticamente cada 5 segundos
-- ✅ Agregado tipo TypeScript `DashboardStats` para type safety
-- ✅ Implementado `refetchInterval: 5000` en React Query para stats, citas y órdenes
-- ✅ **Sección "Citas de Hoy"**: Muestra lista real de citas del día con hora, cliente, vehículo, motivo y estado
-- ✅ **Sección "Órdenes Recientes"**: Muestra últimas 5 órdenes con código, cliente, vehículo, fecha y estado
-- ✅ Skeleton loading states mientras carga
-- ✅ Mensajes "No hay..." cuando no hay datos
-- ✅ Test e2e confirmó visualización correcta de cita id=1 (14:00, Juan García Pérez, Toyota Corolla, Revisión general, estado pendiente)
-- ✅ Estadísticas en tiempo real: OR Abiertas, Citas Hoy, Ingresos Hoy, Ocupación, Total Clientes, Total Vehículos
-
-### 2025-10-13: Módulo de Gestión de Usuarios COMPLETADO
-- ✅ **9º Módulo Completado**: Gestión de Usuarios con CRUD completo
-- ✅ Backend:
-  - GET /api/users (solo admin): Lista todos los usuarios sin contraseñas
-  - PUT /api/users/:id (solo admin): Actualiza usuario, hashea contraseña si se proporciona
-  - DELETE /api/users/:id (solo admin): Elimina usuario (204 No Content)
-  - Métodos en storage: getUsers(), updateUser(), deleteUser()
-- ✅ Frontend (client/src/pages/usuarios.tsx):
-  - Dialog con React Hook Form + Zod validation (editUserSchema con password opcional)
-  - Creación: Password requerido (validado en createMutation)
-  - Edición: Password opcional (se envía solo si se proporciona)
-  - Mutations: create (/api/auth/register), update, delete con cache invalidation
-  - Búsqueda por username, email, nombre
-  - Badges de rol con colores (admin, jefe_taller, recepcion, mecanico, almacen, finanzas)
-  - data-testid completos, toast notifications, AlertDialog
-- ✅ Navegación: Ruta /usuarios + nueva sección "Configuración" en sidebar
-- ✅ Seguridad: Solo admin puede gestionar usuarios (RBAC), contraseñas hasheadas
-- ✅ Testing arquitectónico completado y aprobado
-
-### 2025-10-13: 8 Páginas Principales con CRUD COMPLETADO
-- ✅ Implementado CRUD completo para 8 páginas principales: Clientes, Vehículos, Citas, Artículos, Órdenes de Reparación, Presupuestos, Facturas, Cobros
-- ✅ Patrón consistente aplicado en todas las páginas:
-  - Dialog con React Hook Form + Zod validation (insertSchema desde shared/schema.ts)
-  - Mutations (create, update, delete) con React Query
-  - Toast notifications para éxito/error
-  - AlertDialog para confirmación de DELETE
-  - Cache invalidation optimizado (queryKey sin filtros, filtrado en cliente)
-  - data-testid completos en TODOS los elementos interactivos
-- ✅ Corregido bug crítico de FK: valores por defecto cambiados de 0 a undefined, agregada validación Zod con .min(1)
-- ✅ Backend completado: agregados 8 DELETE endpoints (devuelven 204 No Content) y métodos delete* en storage
-- ✅ Testing arquitectónico completo y aprobado
-- ✅ UX profesional con validación de campos requeridos y mensajes de error claros en español
-
-### 2025-10-12: Módulo Compras & Almacén COMPLETADO
-- ✅ Implementado CRUD completo para 4 páginas: Proveedores, Pedidos de Compra, Recepciones, Ubicaciones
-- ✅ Corregidos 4 bugs críticos:
-  - Agregados endpoints DELETE faltantes (devuelven 204 No Content)
-  - apiRequest ahora maneja 204 correctamente sin parsear JSON
-  - Backend convierte fechas ISO string a Date en POST/PUT
-  - Cache invalidation corregido (removidos filtros de queryKey, filtrado movido al cliente)
-- ✅ Testing e2e completo verificado por arquitecto
-- ✅ UX optimizada con toasts, confirmaciones AlertDialog, y data-testid completos
-
 ## System Architecture
 The system uses a modern full-stack architecture. The frontend is built with **React 18, TypeScript, Vite, Tailwind CSS (with shadcn/ui), React Query, Wouter, React Hook Form, Zod, date-fns, and Lucide React**. The backend is powered by **Node.js, Express, TypeScript, PostgreSQL (Neon), Drizzle ORM, JWT, bcrypt, and Zod**.
 
 **UI/UX Decisions:**
-- **Color Scheme**: "Professional Blue" (`217 91% 60%`) is used as the primary color, conveying trust and reliability. Other semantic colors include Green for success, Amber for warnings, and Red for destructive actions.
-- **Design Features**: Full dark mode, responsive design (desktop, tablet, mobile), elevation system for interactions, shadcn/ui components, collapsible sidebar, and Lucide React icons.
-- **Project Structure**:
-    - `client/`: Frontend application.
-    - `server/`: Backend application, including DB configuration, data layer, API routes, and seeding.
-    - `shared/`: Shared TypeScript types and Zod schemas.
-    - `design_guidelines.md`: Design documentation.
+- **Color Scheme**: "Professional Blue" (`217 91% 60%`) as primary, with Green for success, Amber for warnings, and Red for destructive actions.
+- **Design Features**: Full dark mode, responsive design, elevation system, shadcn/ui components, collapsible sidebar, and Lucide React icons.
+- **Project Structure**: `client/` (Frontend), `server/` (Backend), `shared/` (Shared types/schemas).
 
 **Technical Implementations & Feature Specifications:**
-- **Authentication & Roles**: JWT-based authentication with Role-Based Access Control (RBAC). Roles include Admin, Workshop Manager, Reception, Mechanic, Warehouse, and Finance.
-- **Data Validation**: Zod is used for validation on both frontend and backend.
-- **State Management**: React Query for efficient data fetching and caching.
-- **Database**: PostgreSQL with Drizzle ORM for type-safe schema definition and querying.
+- **Authentication & Roles**: JWT-based authentication with Role-Based Access Control (RBAC) (Admin, Workshop Manager, Reception, Mechanic, Warehouse, Finance).
+- **Data Validation**: Zod for both frontend and backend.
+- **State Management**: React Query for data fetching and caching.
+- **Database**: PostgreSQL with Drizzle ORM.
 - **Core Modules**:
-    - **Dashboard**: Real-time KPIs (open ORs, daily appointments/income, workshop occupancy, customer/vehicle stats).
-    - **Customer & Vehicle Management**: Full CRUD for clients (individual/company, RGPD compliance) and vehicles (plate, VIN, history).
+    - **Dashboard**: Real-time KPIs, daily appointments, recent orders.
+    - **Customer & Vehicle Management**: Full CRUD for clients and vehicles, including DGT environmental label calculation (basic).
     - **Calendar & Appointments**: Visual calendar with status management.
-    - **Repair Orders (OR)**: Lifecycle management (Open to Invoiced), work parts, item consumption, reception checklist, digital signature.
-    - **Quotes**: Creation with labor and item lines, approval flow, automatic IGIC calculation.
-    - **Item Catalog**: Reference, stock, cost/sale price, minimum stock control, categorization.
-    - **IGIC Invoicing**: Multiple invoice types (Simplified, Ordinary, Rectifying), configurable IGIC rates per line, series by location.
-    - **Payments & Cash Register**: Multiple payment methods, cash reconciliation, invoice linking.
-    - **After-Sales CRM**: Automated campaigns (ITV, reviews, birthdays), satisfaction surveys (NPS/CSAT), coupon system.
-    - **Waste Management**: Compliance with Ley 22/2011 + Canary Islands regulations, cataloging (LER), container management, authorized waste managers (NIMA), generation logging linked to OR, Identification Documents (DI), collection tracking.
-    - **Purchasing & Warehouse (COMPLETED)**: Full CRUD for suppliers, purchase orders (with status tracking), goods receipts with lines, multi-warehouse location system. Cache invalidation optimized, date handling corrected, DELETE endpoints implemented.
+    - **Repair Orders (OR)**: Lifecycle management, work parts, item consumption, digital signature.
+    - **Quotes**: Creation with labor and item lines, approval, IGIC calculation.
+    - **Item Catalog**: Reference, stock, pricing, minimum stock control.
+    - **IGIC Invoicing**: Multiple invoice types, configurable IGIC rates.
+    - **Payments & Cash Register**: Multiple payment methods, cash reconciliation.
+    - **After-Sales CRM**: Automated campaigns, satisfaction surveys.
+    - **Waste Management**: Compliance with Canary Islands regulations, cataloging (LER), container management, generation logging.
+    - **Purchasing & Warehouse**: Full CRUD for suppliers, purchase orders, goods receipts, multi-warehouse location system.
+    - **User Management**: Full CRUD for users with RBAC.
+    - **Company Configuration**: Branding customization (logo, name, contact info) and CarAPI integration settings.
 
-**API Endpoints**: A comprehensive set of RESTful API endpoints for all modules, protected by JWT and RBAC.
+**System Design Choices**:
+- Consistent CRUD pattern across 8 main pages (Clients, Vehicles, Appointments, Items, Repair Orders, Quotes, Invoices, Payments).
+- Optimized cache invalidation using stable queryKeys.
+- Robust date handling by converting ISO strings to Date objects in the backend.
+- API requests handle `204 No Content` gracefully.
+- Password management in user editing allows optional updates.
 
 ## External Dependencies
 - **PostgreSQL (Neon)**: Main database.
-- **JWT (JSON Web Tokens)**: For authentication.
-- **bcrypt**: For password hashing.
-- **Tailwind CSS**: For styling and utility classes.
-- **shadcn/ui**: UI component library.
-- **React Query (TanStack Query)**: For server state management.
-- **Zod**: For data validation.
-- **date-fns**: For date manipulation.
-- **Lucide React**: For icons.
-
-## Known Technical Patterns & Fixes
-### DGT Environmental Labels Pattern
-```typescript
-// Backend (server/services/dgt.ts): Retorna color diferenciado para ECO
-getEtiquetaInfo(etiqueta: EtiquetaDGT): {nombre, color, descripcion} {
-  case 'ECO': return {nombre: 'ECO', color: 'eco', ...}
-  case 'C': return {nombre: 'C', color: 'green', ...}
-}
-
-// Frontend (client/src/pages/vehiculos.tsx): Mapea colores a estilos Tailwind
-color === 'eco' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
-color === 'green' ? 'bg-green-600' :
-color === 'blue' ? 'bg-blue-500' : ...
-```
-**Limitación conocida**: Clasificación PHEV >40km→CERO requiere campos adicionales (hibridoEnchufable, autonomiaElectrica) no implementados aún. Implementación actual usa solo año y combustible para clasificación básica.
-
-### apiRequest Pattern (client/src/lib/queryClient.ts)
-```typescript
-// Handles 204 No Content without attempting JSON parsing
-if (res.status === 204 || res.headers.get("content-length") === "0") {
-  return undefined;
-}
-return await res.json();
-```
-
-### Date Handling Pattern (server/routes.ts)
-```typescript
-// Convert ISO string dates to Date objects before validation
-const data = { ...req.body };
-if (data.fecha && typeof data.fecha === 'string') {
-  data.fecha = new Date(data.fecha);
-}
-const validated = insertSchema.parse(data);
-```
-
-### Cache Invalidation Pattern
-- Use stable queryKeys without filters: `["/api/resource"]`
-- Apply filters on the client side after data fetch
-- This ensures proper cache invalidation after mutations
-
-### Password Editing Pattern (Usuarios)
-```typescript
-// Schema para editar (password opcional)
-const editUserSchema = insertUserSchema.extend({
-  password: z.string().optional().or(z.literal("")),
-});
-
-// Form usa editUserSchema para permitir password vacío
-const form = useForm<FormValues>({
-  resolver: zodResolver(editUserSchema),
-});
-
-// createMutation valida que password esté presente
-mutationFn: async (data: FormValues) => {
-  if (!data.password) {
-    throw new Error("La contraseña es requerida");
-  }
-  return await apiRequest(...);
-}
-
-// updateMutation elimina password si está vacío (no cambiar)
-mutationFn: async (data: FormValues) => {
-  const payload = { ...data };
-  if (!payload.password) delete payload.password;
-  return await apiRequest(...);
-}
-```
+- **JWT (JSON Web Tokens)**: Authentication.
+- **bcrypt**: Password hashing.
+- **Tailwind CSS**: Styling.
+- **shadcn/ui**: UI components.
+- **React Query (TanStack Query)**: Server state management.
+- **Zod**: Data validation.
+- **date-fns**: Date manipulation.
+- **Lucide React**: Icons.
+- **CarAPI**: Vehicle data (makes, models, VIN decoding), integrated with JWT caching and configurable via admin settings.
