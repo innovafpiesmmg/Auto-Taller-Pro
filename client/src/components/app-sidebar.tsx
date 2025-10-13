@@ -19,7 +19,8 @@ import {
   Recycle,
   Trash2,
   BookOpen,
-  Truck
+  Truck,
+  Shield
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -156,6 +157,14 @@ const gestionResiduosItems = [
   },
 ];
 
+const configuracionItems = [
+  {
+    title: "Usuarios",
+    url: "/usuarios",
+    icon: Shield,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -244,6 +253,28 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {gestionResiduosItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Configuración</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {configuracionItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild

@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { 
+  insertUserSchema,
   insertClienteSchema,
   insertVehiculoSchema,
   insertCitaSchema,
@@ -147,6 +148,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Datos inválidos", details: error.errors });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Users routes
+  app.get("/api/users", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+      res.json(usersWithoutPasswords);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/users/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = { ...req.body };
+      
+      // Si se está actualizando la contraseña, hashearla
+      if (data.password) {
+        data.password = await bcrypt.hash(data.password, 10);
+      }
+      
+      const validated = insertUserSchema.partial().parse(data);
+      const user = await storage.updateUser(id, validated);
+      if (!user) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/users/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteUser(id);
+      res.status(204).send();
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

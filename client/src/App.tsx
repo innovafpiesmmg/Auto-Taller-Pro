@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
+import Usuarios from "@/pages/usuarios";
 import Clientes from "@/pages/clientes";
 import Vehiculos from "@/pages/vehiculos";
 import Citas from "@/pages/citas";
@@ -84,6 +85,7 @@ function ProtectedRouter() {
           <main className="flex-1 overflow-auto p-6">
             <Switch>
               <Route path="/" component={Dashboard} />
+              <Route path="/usuarios" component={Usuarios} />
               <Route path="/clientes" component={Clientes} />
               <Route path="/vehiculos" component={Vehiculos} />
               <Route path="/citas" component={Citas} />
