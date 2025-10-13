@@ -13,9 +13,20 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface DashboardStats {
+  ordenesAbiertas: number;
+  citasHoy: number;
+  ingresosHoy: number;
+  ocupacion: number;
+  totalClientes: number;
+  totalVehiculos: number;
+  ordenesDelMes: number;
+}
+
 export default function Dashboard() {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats/dashboard"],
+    refetchInterval: 5000, // Actualizar cada 5 segundos
   });
 
   const formatCurrency = (value: number) => {
