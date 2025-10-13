@@ -74,6 +74,7 @@ import {
   gestoresResiduos,
   registrosResiduos,
   configSistema,
+  configEmpresa,
   documentosDI,
   recogidasResiduos,
   type CatalogoResiduo,
@@ -90,6 +91,8 @@ import {
   type InsertRecogidaResiduo,
   type ConfigSistema,
   type InsertConfigSistema,
+  type ConfigEmpresa,
+  type InsertConfigEmpresa,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
@@ -281,6 +284,10 @@ export interface IStorage {
   getAllConfigSistema(): Promise<ConfigSistema[]>;
   setConfigSistema(config: InsertConfigSistema): Promise<ConfigSistema>;
   updateConfigSistema(clave: string, valor: string): Promise<ConfigSistema | undefined>;
+
+  // Configuración de Empresa
+  getConfigEmpresa(): Promise<ConfigEmpresa | undefined>;
+  createOrUpdateConfigEmpresa(config: InsertConfigEmpresa): Promise<ConfigEmpresa>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1112,6 +1119,33 @@ export class DatabaseStorage implements IStorage {
       .where(eq(configSistema.clave, clave))
       .returning();
     return updated || undefined;
+  }
+
+  // Configuración de Empresa
+  async getConfigEmpresa(): Promise<ConfigEmpresa | undefined> {
+    const [config] = await db.select().from(configEmpresa).limit(1);
+    return config || undefined;
+  }
+
+  async createOrUpdateConfigEmpresa(config: InsertConfigEmpresa): Promise<ConfigEmpresa> {
+    const existing = await this.getConfigEmpresa();
+    
+    if (existing) {
+      // Actualizar el registro existente
+      const [updated] = await db
+        .update(configEmpresa)
+        .set({ ...config, updatedAt: new Date() })
+        .where(eq(configEmpresa.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Crear nuevo registro
+      const [created] = await db
+        .insert(configEmpresa)
+        .values(config)
+        .returning();
+      return created;
+    }
   }
 }
 
