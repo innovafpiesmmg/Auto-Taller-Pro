@@ -9,21 +9,27 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## Recent Changes (Latest)
-### 2025-10-13: Integración Etiquetas Ambientales DGT COMPLETADA
+### 2025-10-13: Integración Etiquetas Ambientales DGT COMPLETADA ✅
 - ✅ **Backend DGTService (server/services/dgt.ts)**:
   - Cálculo automático de etiquetas DGT según normativa española
   - Reglas implementadas: CERO (eléctricos, PHEV >40km), ECO (híbridos, GNC, GLP, PHEV ≤40km), C (gasolina 2006+, diésel 2014+), B (gasolina 2001-2005, diésel 2006-2013), SIN_DISTINTIVO
   - Método getEtiquetaInfo() con nombre, color y descripción
+  - Colores diferenciados: ECO→"eco", C→"green", B→"yellow", CERO→"blue", SIN_DISTINTIVO→"gray"
 - ✅ **Endpoint API**:
   - GET `/api/vehiculos/:id/etiqueta-dgt` calcula y actualiza etiqueta
   - Protegido con RBAC (admin, jefe_taller, recepcion, mecanico)
 - ✅ **Frontend (client/src/pages/vehiculos.tsx)**:
   - Botón "Calcular Etiqueta" en formulario de edición (requiere año + combustible)
-  - Badge visual con gradiente verde-azul para ECO, colores específicos según normativa
+  - Badges con colores oficiales DGT:
+    - ECO: Gradiente verde-azul (bg-gradient-to-r from-green-500 to-blue-500)
+    - CERO: Azul sólido (bg-blue-500)
+    - C: Verde sólido (bg-green-600)
+    - B: Amarillo (bg-yellow-500)
   - Columna "Etiqueta DGT" en listado con badges de colores
   - Tooltip con descripción de cada etiqueta
-- ✅ **Schema actualizado**: Campo `etiqueta_ambiental` en tabla vehiculos
+- ✅ **Schema actualizado**: Campo `etiqueta_ambiental` en tabla vehiculos (migración aplicada)
 - ✅ **Fix normativa**: Híbridos enchufables con autonomía ≤40km reciben ECO correctamente
+- ✅ **Testing**: Test e2e exitoso (vehículo id=1 año 2021 Híbrido → ECO)
 
 ### 2025-10-13: Integración CarAPI COMPLETADA (Backend + Configuración)
 - ✅ **Backend CarAPI Completo**:
@@ -152,6 +158,21 @@ The system uses a modern full-stack architecture. The frontend is built with **R
 - **Lucide React**: For icons.
 
 ## Known Technical Patterns & Fixes
+### DGT Environmental Labels Pattern
+```typescript
+// Backend (server/services/dgt.ts): Retorna color diferenciado para ECO
+getEtiquetaInfo(etiqueta: EtiquetaDGT): {nombre, color, descripcion} {
+  case 'ECO': return {nombre: 'ECO', color: 'eco', ...}
+  case 'C': return {nombre: 'C', color: 'green', ...}
+}
+
+// Frontend (client/src/pages/vehiculos.tsx): Mapea colores a estilos Tailwind
+color === 'eco' ? 'bg-gradient-to-r from-green-500 to-blue-500' :
+color === 'green' ? 'bg-green-600' :
+color === 'blue' ? 'bg-blue-500' : ...
+```
+**Limitación conocida**: Clasificación PHEV >40km→CERO requiere campos adicionales (hibridoEnchufable, autonomiaElectrica) no implementados aún. Implementación actual usa solo año y combustible para clasificación básica.
+
 ### apiRequest Pattern (client/src/lib/queryClient.ts)
 ```typescript
 // Handles 204 No Content without attempting JSON parsing
