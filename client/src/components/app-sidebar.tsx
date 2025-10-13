@@ -196,7 +196,7 @@ export function AppSidebar() {
   });
 
   const nombreEmpresa = configEmpresa?.nombreEmpresa || "DMS Taller";
-  const logoUrl = configEmpresa?.logoUrl;
+  const logoUrl = configEmpresa?.logoUrl?.trim() || null;
 
   return (
     <Sidebar data-testid="sidebar-main">

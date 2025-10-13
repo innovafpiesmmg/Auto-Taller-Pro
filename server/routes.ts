@@ -1727,8 +1727,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Configuración de Empresa (solo admin)
-  app.get("/api/config/empresa", authenticateToken, requireRole("admin"), async (req, res) => {
+  // Configuración de Empresa (GET público, PUT solo admin)
+  app.get("/api/config/empresa", async (req, res) => {
     try {
       const config = await storage.getConfigEmpresa();
       res.json(config || null);
