@@ -9,6 +9,25 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## Recent Changes (Latest)
+### 2025-10-13: Módulo de Gestión de Usuarios COMPLETADO
+- ✅ **9º Módulo Completado**: Gestión de Usuarios con CRUD completo
+- ✅ Backend:
+  - GET /api/users (solo admin): Lista todos los usuarios sin contraseñas
+  - PUT /api/users/:id (solo admin): Actualiza usuario, hashea contraseña si se proporciona
+  - DELETE /api/users/:id (solo admin): Elimina usuario (204 No Content)
+  - Métodos en storage: getUsers(), updateUser(), deleteUser()
+- ✅ Frontend (client/src/pages/usuarios.tsx):
+  - Dialog con React Hook Form + Zod validation (editUserSchema con password opcional)
+  - Creación: Password requerido (validado en createMutation)
+  - Edición: Password opcional (se envía solo si se proporciona)
+  - Mutations: create (/api/auth/register), update, delete con cache invalidation
+  - Búsqueda por username, email, nombre
+  - Badges de rol con colores (admin, jefe_taller, recepcion, mecanico, almacen, finanzas)
+  - data-testid completos, toast notifications, AlertDialog
+- ✅ Navegación: Ruta /usuarios + nueva sección "Configuración" en sidebar
+- ✅ Seguridad: Solo admin puede gestionar usuarios (RBAC), contraseñas hasheadas
+- ✅ Testing arquitectónico completado y aprobado
+
 ### 2025-10-13: 8 Páginas Principales con CRUD COMPLETADO
 - ✅ Implementado CRUD completo para 8 páginas principales: Clientes, Vehículos, Citas, Artículos, Órdenes de Reparación, Presupuestos, Facturas, Cobros
 - ✅ Patrón consistente aplicado en todas las páginas:
@@ -100,3 +119,31 @@ const validated = insertSchema.parse(data);
 - Use stable queryKeys without filters: `["/api/resource"]`
 - Apply filters on the client side after data fetch
 - This ensures proper cache invalidation after mutations
+
+### Password Editing Pattern (Usuarios)
+```typescript
+// Schema para editar (password opcional)
+const editUserSchema = insertUserSchema.extend({
+  password: z.string().optional().or(z.literal("")),
+});
+
+// Form usa editUserSchema para permitir password vacío
+const form = useForm<FormValues>({
+  resolver: zodResolver(editUserSchema),
+});
+
+// createMutation valida que password esté presente
+mutationFn: async (data: FormValues) => {
+  if (!data.password) {
+    throw new Error("La contraseña es requerida");
+  }
+  return await apiRequest(...);
+}
+
+// updateMutation elimina password si está vacío (no cambiar)
+mutationFn: async (data: FormValues) => {
+  const payload = { ...data };
+  if (!payload.password) delete payload.password;
+  return await apiRequest(...);
+}
+```
