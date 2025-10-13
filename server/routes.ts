@@ -5,6 +5,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import { CarAPIService } from "./services/carapi";
 import { 
   insertUserSchema,
   insertClienteSchema,
@@ -1645,6 +1646,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       await storage.deleteRecogidaResiduo(id);
       res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // CarAPI Integration
+  const carapiService = new CarAPIService(storage);
+
+  // Configuración de CarAPI (solo admin)
+  app.get("/api/config/carapi", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const tokenConfig = await storage.getConfigSistema("CARAPI_TOKEN");
+      const secretConfig = await storage.getConfigSistema("CARAPI_SECRET");
+      const isConfigured = await carapiService.isConfigured();
+      
+      res.json({
+        isConfigured,
+        hasToken: !!tokenConfig?.valor,
+        hasSecret: !!secretConfig?.valor,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/config/carapi", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const { token, secret } = req.body;
+      
+      if (!token || !secret) {
+        return res.status(400).json({ error: "Token y secret son requeridos" });
+      }
+
+      await storage.setConfigSistema({
+        clave: "CARAPI_TOKEN",
+        valor: token,
+        descripcion: "Token de autenticación para CarAPI",
+      });
+
+      await storage.setConfigSistema({
+        clave: "CARAPI_SECRET",
+        valor: secret,
+        descripcion: "Secret de autenticación para CarAPI",
+      });
+
+      res.json({ success: true, message: "Configuración de CarAPI guardada correctamente" });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Endpoints proxy de CarAPI
+  app.get("/api/carapi/makes", authenticateToken, async (req, res) => {
+    try {
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const makes = await carapiService.getMakes(year);
+      res.json(makes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/carapi/models", authenticateToken, async (req, res) => {
+    try {
+      const makeId = req.query.makeId ? parseInt(req.query.makeId as string) : undefined;
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const models = await carapiService.getModels(makeId, year);
+      res.json(models);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/carapi/years", authenticateToken, async (req, res) => {
+    try {
+      const years = await carapiService.getYears();
+      res.json(years);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/carapi/vin/:vin", authenticateToken, async (req, res) => {
+    try {
+      const { vin } = req.params;
+      const vehicleData = await carapiService.decodeVIN(vin);
+      
+      if (!vehicleData) {
+        return res.status(404).json({ error: "No se pudo decodificar el VIN" });
+      }
+
+      res.json(vehicleData);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
