@@ -73,6 +73,7 @@ import {
   contenedoresResiduos,
   gestoresResiduos,
   registrosResiduos,
+  configSistema,
   documentosDI,
   recogidasResiduos,
   type CatalogoResiduo,
@@ -87,6 +88,8 @@ import {
   type InsertDocumentoDI,
   type RecogidaResiduo,
   type InsertRecogidaResiduo,
+  type ConfigSistema,
+  type InsertConfigSistema,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
@@ -272,6 +275,12 @@ export interface IStorage {
   createRecogidaResiduo(recogida: InsertRecogidaResiduo): Promise<RecogidaResiduo>;
   updateRecogidaResiduo(id: number, recogida: Partial<InsertRecogidaResiduo>): Promise<RecogidaResiduo | undefined>;
   deleteRecogidaResiduo(id: number): Promise<void>;
+  
+  // Configuración del Sistema
+  getConfigSistema(clave: string): Promise<ConfigSistema | undefined>;
+  getAllConfigSistema(): Promise<ConfigSistema[]>;
+  setConfigSistema(config: InsertConfigSistema): Promise<ConfigSistema>;
+  updateConfigSistema(clave: string, valor: string): Promise<ConfigSistema | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1065,6 +1074,44 @@ export class DatabaseStorage implements IStorage {
 
   async deleteRecogidaResiduo(id: number): Promise<void> {
     await db.delete(recogidasResiduos).where(eq(recogidasResiduos.id, id));
+  }
+
+  // Configuración del Sistema
+  async getConfigSistema(clave: string): Promise<ConfigSistema | undefined> {
+    const [config] = await db.select().from(configSistema).where(eq(configSistema.clave, clave));
+    return config || undefined;
+  }
+
+  async getAllConfigSistema(): Promise<ConfigSistema[]> {
+    return await db.select().from(configSistema).orderBy(configSistema.clave);
+  }
+
+  async setConfigSistema(config: InsertConfigSistema): Promise<ConfigSistema> {
+    // Buscar si ya existe
+    const existing = await this.getConfigSistema(config.clave);
+    
+    if (existing) {
+      // Actualizar
+      const [updated] = await db
+        .update(configSistema)
+        .set({ valor: config.valor, descripcion: config.descripcion, updatedAt: new Date() })
+        .where(eq(configSistema.clave, config.clave))
+        .returning();
+      return updated;
+    } else {
+      // Crear nuevo
+      const [newConfig] = await db.insert(configSistema).values(config).returning();
+      return newConfig;
+    }
+  }
+
+  async updateConfigSistema(clave: string, valor: string): Promise<ConfigSistema | undefined> {
+    const [updated] = await db
+      .update(configSistema)
+      .set({ valor, updatedAt: new Date() })
+      .where(eq(configSistema.clave, clave))
+      .returning();
+    return updated || undefined;
   }
 }
 
