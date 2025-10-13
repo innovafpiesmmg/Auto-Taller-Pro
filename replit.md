@@ -9,11 +9,15 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## Recent Changes (Latest)
-### 2025-10-13: Dashboard con Actualización en Tiempo Real
+### 2025-10-13: Dashboard con Actualización en Tiempo Real y Lista de Citas/Órdenes
 - ✅ Dashboard se actualiza automáticamente cada 5 segundos
 - ✅ Agregado tipo TypeScript `DashboardStats` para type safety
-- ✅ Implementado `refetchInterval: 5000` en React Query
-- ✅ Test e2e confirmó múltiples GET requests periódicas sin interacción del usuario
+- ✅ Implementado `refetchInterval: 5000` en React Query para stats, citas y órdenes
+- ✅ **Sección "Citas de Hoy"**: Muestra lista real de citas del día con hora, cliente, vehículo, motivo y estado
+- ✅ **Sección "Órdenes Recientes"**: Muestra últimas 5 órdenes con código, cliente, vehículo, fecha y estado
+- ✅ Skeleton loading states mientras carga
+- ✅ Mensajes "No hay..." cuando no hay datos
+- ✅ Test e2e confirmó visualización correcta de cita id=1 (14:00, Juan García Pérez, Toyota Corolla, Revisión general, estado pendiente)
 - ✅ Estadísticas en tiempo real: OR Abiertas, Citas Hoy, Ingresos Hoy, Ocupación, Total Clientes, Total Vehículos
 
 ### 2025-10-13: Módulo de Gestión de Usuarios COMPLETADO
