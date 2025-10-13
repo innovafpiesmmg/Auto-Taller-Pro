@@ -8,6 +8,33 @@ I want iterative development.
 I prefer detailed explanations.
 Ask before making major changes.
 
+## Configuración de Despliegue en Producción
+
+### 🔒 Variables de Entorno Requeridas
+Cuando despliega a producción, debe configurar manualmente las siguientes variables de entorno en la configuración de despliegue:
+
+**Variables Críticas:**
+- `JWT_SECRET` - Secreto para firmar tokens JWT (generar string aleatorio 32+ caracteres)
+- `SESSION_SECRET` - Secreto para sesiones (generar string aleatorio 32+ caracteres)
+- `NODE_ENV=production` - Indica entorno de producción
+- `DATABASE_URL` - URL de conexión a base de datos PostgreSQL de producción
+
+**Variables Opcionales:**
+- `CARAPI_TOKEN` - Token de CarAPI (si usa integración de datos vehiculares)
+- `CARAPI_SECRET` - Secret de CarAPI (si usa integración de datos vehiculares)
+
+### ⚙️ Configuración Técnica Implementada
+- ✅ **Trust Proxy habilitado** (`app.set('trust proxy', 1)`) - CRÍTICO para autenticación en producción
+- ✅ Sin esta configuración, las cookies y JWT fallan detrás del proxy reverso de Replit
+- ✅ Sistema preparado para HTTPS/cookies seguras en producción
+
+### 📝 Pasos para Desplegar
+1. Click en **Deploy** (Publicar)
+2. En configuración de despliegue, agregar todas las variables de entorno listadas arriba
+3. Las variables de desarrollo NO se copian automáticamente - debe agregarlas manualmente
+4. Generar secretos seguros (usar generador de contraseñas para JWT_SECRET y SESSION_SECRET)
+5. Configurar DATABASE_URL apuntando a base de datos PostgreSQL de producción
+
 ## System Architecture
 The system uses a modern full-stack architecture. The frontend is built with **React 18, TypeScript, Vite, Tailwind CSS (with shadcn/ui), React Query, Wouter, React Hook Form, Zod, date-fns, and Lucide React**. The backend is powered by **Node.js, Express, TypeScript, PostgreSQL (Neon), Drizzle ORM, JWT, bcrypt, and Zod**.
 
