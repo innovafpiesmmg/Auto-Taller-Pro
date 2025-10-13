@@ -23,6 +23,7 @@ import {
   Shield
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -34,6 +35,22 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
+
+interface ConfigEmpresa {
+  id: number;
+  nombreEmpresa: string;
+  cifNif: string | null;
+  direccion: string | null;
+  codigoPostal: string | null;
+  ciudad: string | null;
+  provincia: string | null;
+  telefono: string | null;
+  email: string | null;
+  web: string | null;
+  logoUrl: string | null;
+  colorPrimario: string | null;
+  updatedAt: string;
+}
 
 const menuItems = [
   {
@@ -173,15 +190,42 @@ const configuracionItems = [
 export function AppSidebar() {
   const [location] = useLocation();
 
+  const { data: configEmpresa } = useQuery<ConfigEmpresa | null>({
+    queryKey: ["/api/config/empresa"],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+
+  const nombreEmpresa = configEmpresa?.nombreEmpresa || "DMS Taller";
+  const logoUrl = configEmpresa?.logoUrl;
+
   return (
     <Sidebar data-testid="sidebar-main">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary">
-            <Settings className="h-6 w-6 text-primary-foreground" />
-          </div>
+          {logoUrl ? (
+            <div className="flex h-10 w-10 items-center justify-center">
+              <img 
+                src={logoUrl} 
+                alt={nombreEmpresa}
+                className="h-10 w-10 object-contain"
+                data-testid="img-logo-empresa"
+                onError={(e) => {
+                  // Fallback to default icon on error
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="flex h-10 w-10 items-center justify-center rounded-md bg-primary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-primary-foreground"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>`;
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary">
+              <Settings className="h-6 w-6 text-primary-foreground" />
+            </div>
+          )}
           <div>
-            <h2 className="text-lg font-semibold">DMS Taller</h2>
+            <h2 className="text-lg font-semibold" data-testid="text-nombre-empresa">{nombreEmpresa}</h2>
             <p className="text-xs text-muted-foreground">Sistema de Gestión</p>
           </div>
         </div>
