@@ -1727,6 +1727,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configuración de Empresa (solo admin)
+  app.get("/api/config/empresa", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const config = await storage.getConfigEmpresa();
+      res.json(config || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/config/empresa", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const data = req.body;
+      
+      // Convertir campos opcionales vacíos a null
+      const cleanData = {
+        nombreEmpresa: data.nombreEmpresa || "Taller",
+        cifNif: data.cifNif || null,
+        direccion: data.direccion || null,
+        codigoPostal: data.codigoPostal || null,
+        ciudad: data.ciudad || null,
+        provincia: data.provincia || null,
+        telefono: data.telefono || null,
+        email: data.email || null,
+        web: data.web || null,
+        logoUrl: data.logoUrl || null,
+        colorPrimario: data.colorPrimario || null,
+      };
+
+      const config = await storage.createOrUpdateConfigEmpresa(cleanData);
+      res.json(config);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Endpoints proxy de CarAPI
   app.get("/api/carapi/makes", authenticateToken, async (req, res) => {
     try {
