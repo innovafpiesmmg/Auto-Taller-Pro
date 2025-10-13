@@ -9,6 +9,20 @@ I prefer detailed explanations.
 Ask before making major changes.
 
 ## Recent Changes (Latest)
+### 2025-10-13: 8 Páginas Principales con CRUD COMPLETADO
+- ✅ Implementado CRUD completo para 8 páginas principales: Clientes, Vehículos, Citas, Artículos, Órdenes de Reparación, Presupuestos, Facturas, Cobros
+- ✅ Patrón consistente aplicado en todas las páginas:
+  - Dialog con React Hook Form + Zod validation (insertSchema desde shared/schema.ts)
+  - Mutations (create, update, delete) con React Query
+  - Toast notifications para éxito/error
+  - AlertDialog para confirmación de DELETE
+  - Cache invalidation optimizado (queryKey sin filtros, filtrado en cliente)
+  - data-testid completos en TODOS los elementos interactivos
+- ✅ Corregido bug crítico de FK: valores por defecto cambiados de 0 a undefined, agregada validación Zod con .min(1)
+- ✅ Backend completado: agregados 8 DELETE endpoints (devuelven 204 No Content) y métodos delete* en storage
+- ✅ Testing arquitectónico completo y aprobado
+- ✅ UX profesional con validación de campos requeridos y mensajes de error claros en español
+
 ### 2025-10-12: Módulo Compras & Almacén COMPLETADO
 - ✅ Implementado CRUD completo para 4 páginas: Proveedores, Pedidos de Compra, Recepciones, Ubicaciones
 - ✅ Corregidos 4 bugs críticos:
