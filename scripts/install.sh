@@ -240,6 +240,20 @@ echo -e "  sudo bash ${APP_DIR}/scripts/update.sh   — Actualizar"
 echo ""
 warn "Guarda las credenciales de arriba en un lugar seguro."
 warn "El archivo .env contiene los secretos de la aplicación."
+
+# ── 15. Cloudflare Tunnel (opcional) ─────────────────────────────────────
 echo ""
-info "¿Quieres exponer la app a través de Cloudflare Tunnel (sin abrir puertos)?"
-echo -e "  Ejecuta: ${BOLD}sudo bash ${APP_DIR}/scripts/setup-cloudflare.sh tu-dominio.com${NC}"
+echo -e "${CYAN}¿Deseas configurar Cloudflare Tunnel ahora para acceder desde internet?${NC}"
+echo -e "  (No es obligatorio — puedes hacerlo después con scripts/setup-cloudflare.sh)"
+read -rp "  Configurar Cloudflare Tunnel [s/N]: " CF_ANSWER
+if [[ "${CF_ANSWER,,}" == "s" || "${CF_ANSWER,,}" == "si" || "${CF_ANSWER,,}" == "sí" ]]; then
+  read -rp "  Introduce tu dominio (ej: taller.midominio.com): " CF_DOMAIN
+  if [[ -n "${CF_DOMAIN}" ]]; then
+    bash "${APP_DIR}/scripts/setup-cloudflare.sh" "${CF_DOMAIN}"
+  else
+    warn "Dominio vacío. Ejecuta manualmente: sudo bash ${APP_DIR}/scripts/setup-cloudflare.sh tu-dominio.com"
+  fi
+else
+  info "Puedes configurarlo más adelante con:"
+  echo -e "  ${BOLD}sudo bash ${APP_DIR}/scripts/setup-cloudflare.sh tu-dominio.com${NC}"
+fi
