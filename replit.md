@@ -88,3 +88,16 @@ The system uses a modern full-stack architecture. The frontend is built with **R
 - **date-fns**: Date manipulation.
 - **Lucide React**: Icons.
 - **CarAPI**: Vehicle data (makes, models, VIN decoding), integrated with JWT caching and configurable via admin settings.
+- **Landing Page**: Public landing page at `/` for unauthenticated users; authenticated users redirect to `/dashboard`.
+- **ASD Logo**: `attached_assets/ASD_1772120752929.png` — used in the landing page footer.
+
+## Deployment Scripts (Ubuntu Server)
+Located in `scripts/` for unattended installation on Ubuntu 20.04/22.04/24.04:
+
+- **`scripts/install.sh`** — Full unattended install: updates OS, installs Node.js 20, PostgreSQL, clones repo, creates DB, generates secrets, builds app, sets up PM2 + systemd autostart.
+  - One-liner: `sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/innovafpiesmmg/Auto-Taller-Pro/main/scripts/install.sh)"`
+  - Configurable via env vars: `APP_DIR`, `APP_USER`, `APP_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
+- **`scripts/update.sh`** — Pull latest from GitHub, rebuild, reload PM2 zero-downtime.
+- **`scripts/backup-db.sh`** — pg_dump compressed to `/var/backups/autotaller/`, auto-rotates 7 days.
+- **`scripts/restore-db.sh`** — Restore from `.sql.gz` file with confirmation prompt.
+- **`README.md`** — Full installation, configuration, and operations documentation in Spanish.
