@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import asdLogo from "@assets/ASD_1772120752929.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -359,11 +360,11 @@ export default function Landing() {
             </span>
           </div>
           <div className="flex items-center gap-2 text-center sm:text-right max-w-sm">
-            <Wrench className="h-4 w-4 shrink-0" />
+            <img src={asdLogo} alt="ASD" className="h-6 w-auto shrink-0" />
             <span>
               Software desarrollado por{" "}
               <strong className="text-foreground">
-                [nombre del desarrollador]
+                Atreyu Servicios Digitales
               </strong>
             </span>
           </div>
