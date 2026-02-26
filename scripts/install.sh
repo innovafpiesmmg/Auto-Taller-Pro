@@ -160,6 +160,35 @@ sudo -u "${APP_USER}" bash -c "
 "
 log "Migraciones aplicadas."
 
+# ── 10b. Crear usuario administrador inicial ──────────────────────────────
+info "Creando usuario administrador inicial..."
+ADMIN_PASS="${ADMIN_PASS:-admin123}"
+sudo -u "${APP_USER}" bash -c "
+  set -a; source '${ENV_FILE}'; set +a
+  cd '${APP_DIR}'
+  node --input-type=module <<'NODESCRIPT'
+import bcrypt from '/opt/autotaller/node_modules/bcrypt/index.js';
+import pg from '/opt/autotaller/node_modules/pg/lib/index.js';
+const { Pool } = pg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+try {
+  const hash = await bcrypt.hash('${ADMIN_PASS}', 10);
+  const r = await pool.query(
+    \`INSERT INTO users (username, email, password, nombre, apellidos, rol, activo)
+     VALUES ('admin','admin@taller.local',\$1,'Administrador','Sistema','admin',true)
+     ON CONFLICT (username) DO UPDATE SET password=\$1, activo=true RETURNING id\`,
+    [hash]
+  );
+  console.log(r.rowCount > 0 ? 'Usuario admin listo.' : 'Sin cambios.');
+} catch(e) {
+  console.error('Error creando admin:', e.message);
+} finally {
+  await pool.end();
+}
+NODESCRIPT
+" || warn "No se pudo crear el usuario admin. Usa scripts/reset-admin.sh tras arrancar."
+log "Usuario admin listo (usuario: admin / contraseña: ${ADMIN_PASS})."
+
 # ── 11. Construir la aplicación ───────────────────────────────────────────
 info "Construyendo la aplicación (frontend + backend)..."
 # Garantizar que el usuario de la app es dueño de todos los archivos antes del build
@@ -234,6 +263,10 @@ echo -e "  ${BOLD}Base de datos:${NC} ${DB_NAME}@localhost:5432"
 echo -e "  ${BOLD}Usuario BD:${NC}    ${DB_USER}"
 echo -e "  ${BOLD}Contraseña BD:${NC} ${DB_PASS}"
 echo -e "  ${BOLD}Config .env:${NC}   ${ENV_FILE}"
+echo ""
+echo -e "  ${BOLD}Acceso a la aplicación:${NC}"
+echo -e "  Usuario admin:   admin"
+echo -e "  Contraseña:      ${ADMIN_PASS}"
 echo ""
 echo -e "  ${BOLD}Comandos útiles:${NC}"
 echo -e "  pm2 status               — Estado del proceso"
