@@ -191,8 +191,11 @@ log "Usuario admin listo (usuario: admin / contraseña: ${ADMIN_PASS})."
 
 # ── 11. Construir la aplicación ───────────────────────────────────────────
 info "Construyendo la aplicación (frontend + backend)..."
-# Garantizar que el usuario de la app es dueño de todos los archivos antes del build
+# Garantizar permisos correctos SOLO en el directorio de la app (no en binarios del sistema)
 chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
+# Restaurar permisos de ejecución del binario de Node por si acaso
+NODE_BIN=$(readlink -f "$(which node)" 2>/dev/null || true)
+[[ -n "${NODE_BIN}" ]] && chmod 755 "${NODE_BIN}" || true
 sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm run build"
 log "Build completado."
 
