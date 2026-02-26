@@ -163,31 +163,22 @@ log "Migraciones aplicadas."
 # ── 10b. Crear usuario administrador inicial ──────────────────────────────
 info "Creando usuario administrador inicial..."
 ADMIN_PASS="${ADMIN_PASS:-admin123}"
-sudo -u "${APP_USER}" bash -c "
-  set -a; source '${ENV_FILE}'; set +a
-  cd '${APP_DIR}'
-  node --input-type=module <<'NODESCRIPT'
-import bcrypt from '/opt/autotaller/node_modules/bcrypt/index.js';
-import pg from '/opt/autotaller/node_modules/pg/lib/index.js';
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-try {
-  const hash = await bcrypt.hash('${ADMIN_PASS}', 10);
-  const r = await pool.query(
-    \`INSERT INTO users (username, email, password, nombre, apellidos, rol, activo)
-     VALUES ('admin','admin@taller.local',\$1,'Administrador','Sistema','admin',true)
-     ON CONFLICT (username) DO UPDATE SET password=\$1, activo=true RETURNING id\`,
-    [hash]
-  );
-  console.log(r.rowCount > 0 ? 'Usuario admin listo.' : 'Sin cambios.');
-} catch(e) {
-  console.error('Error creando admin:', e.message);
-} finally {
-  await pool.end();
-}
-NODESCRIPT
-" || warn "No se pudo crear el usuario admin. Usa scripts/reset-admin.sh tras arrancar."
-log "Usuario admin listo (usuario: admin / contraseña: ${ADMIN_PASS})."
+
+# Generar hash bcrypt con Node.js (CommonJS, compatible sin flags especiales)
+ADMIN_HASH=$(cd "${APP_DIR}" && node -e \
+  "require('./node_modules/bcrypt').hash('${ADMIN_PASS}',10).then(h=>{console.log(h);process.exit(0)})" \
+  2>/dev/null) || ADMIN_HASH=""
+
+if [[ -n "${ADMIN_HASH}" ]]; then
+  sudo -u postgres psql -d "${DB_NAME}" -c \
+    "INSERT INTO users (username,email,password,nombre,apellidos,rol,activo)
+     VALUES ('admin','admin@taller.local','${ADMIN_HASH}','Administrador','Sistema','admin',true)
+     ON CONFLICT (username) DO UPDATE SET password='${ADMIN_HASH}',activo=true;" \
+    2>/dev/null && log "Usuario admin creado/actualizado." \
+    || warn "No se pudo insertar el usuario. Ejecuta: scripts/reset-admin.sh"
+else
+  warn "No se generó el hash. Ejecuta scripts/reset-admin.sh después de arrancar."
+fi
 
 # ── 11. Construir la aplicación ───────────────────────────────────────────
 info "Construyendo la aplicación (frontend + backend)..."
