@@ -165,9 +165,8 @@ info "Construyendo la aplicación (frontend + backend)..."
 sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm run build"
 log "Build completado."
 
-# Limpiar devDependencies tras el build para reducir tamaño en disco
-info "Eliminando devDependencies (no necesarias en producción)..."
-sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm prune --omit=dev --silent" || true
+# NOTA: no se eliminan devDependencies porque el servidor usa --packages=external
+# en esbuild, lo que significa que vite y otros paquetes se importan en runtime.
 
 # ── 12. PM2: crear/actualizar ecosistema ─────────────────────────────────
 PM2_CONFIG="${APP_DIR}/ecosystem.config.cjs"
