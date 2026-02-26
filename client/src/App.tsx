@@ -37,6 +37,7 @@ import DocumentosDI from "@/pages/documentos-di";
 import RecogidasResiduos from "@/pages/recogidas-residuos";
 import Informes from "@/pages/informes";
 import Configuracion from "@/pages/configuracion";
+import Landing from "@/pages/landing";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -46,14 +47,16 @@ function ProtectedRouter() {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isAuthenticated && location !== "/login") {
+    const publicRoutes = ["/", "/login"];
+    if (!isAuthenticated && !publicRoutes.includes(location)) {
       setLocation("/login");
-    } else if (isAuthenticated && location === "/login") {
-      setLocation("/");
+    } else if (isAuthenticated && (location === "/login" || location === "/")) {
+      setLocation("/dashboard");
     }
   }, [isAuthenticated, location, setLocation]);
 
   if (!isAuthenticated) {
+    if (location === "/") return <Landing />;
     return <Login />;
   }
 
@@ -92,7 +95,7 @@ function ProtectedRouter() {
           </header>
           <main className="flex-1 overflow-auto p-4 lg:p-6">
             <Switch>
-              <Route path="/" component={Dashboard} />
+              <Route path="/dashboard" component={Dashboard} />
               <Route path="/usuarios" component={Usuarios} />
               <Route path="/clientes" component={Clientes} />
               <Route path="/vehiculos" component={Vehiculos} />
