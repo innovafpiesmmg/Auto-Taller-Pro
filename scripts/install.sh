@@ -162,6 +162,8 @@ log "Migraciones aplicadas."
 
 # ── 11. Construir la aplicación ───────────────────────────────────────────
 info "Construyendo la aplicación (frontend + backend)..."
+# Garantizar que el usuario de la app es dueño de todos los archivos antes del build
+chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
 sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm run build"
 log "Build completado."
 
