@@ -56,7 +56,7 @@ log "Herramientas base instaladas."
 # ── 2. Node.js 20 (LTS) via NodeSource ────────────────────────────────────
 if ! command -v node &>/dev/null || [[ "$(node -v | cut -d. -f1 | tr -d 'v')" -lt "$NODE_VERSION" ]]; then
   info "Instalando Node.js ${NODE_VERSION}..."
-  curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - -qq
+  curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash -
   apt-get install -y -qq nodejs
   log "Node.js $(node -v) instalado."
 else
@@ -206,7 +206,7 @@ sudo -u "${APP_USER}" bash -c "
 "
 
 # Configurar inicio automático con systemd
-PM2_STARTUP=$(sudo -u "${APP_USER}" pm2 startup systemd -u "${APP_USER}" --hp "${APP_DIR}" 2>&1 | grep 'sudo env')
+PM2_STARTUP=$(sudo -u "${APP_USER}" pm2 startup systemd -u "${APP_USER}" --hp "${APP_DIR}" 2>&1 | grep 'sudo env' || true)
 if [[ -n "${PM2_STARTUP}" ]]; then
   eval "${PM2_STARTUP}" 2>/dev/null || true
 fi
