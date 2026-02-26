@@ -259,6 +259,48 @@ sudo certbot --nginx -d tu-dominio.com
 
 ---
 
+## Cloudflare Tunnel (alternativa sin abrir puertos)
+
+Cloudflare Tunnel expone la aplicación a través de la red de Cloudflare **sin necesidad de abrir puertos en el servidor ni configurar SSL manualmente**. Es la opción más sencilla si ya gestionas tu dominio en Cloudflare.
+
+### Requisitos
+- Dominio gestionado en Cloudflare (nube naranja activa)
+- La aplicación instalada y corriendo (`pm2 status` debe mostrar `online`)
+
+### Instalación con el script automático
+
+```bash
+sudo bash /opt/autotaller/scripts/setup-cloudflare.sh taller.midominio.com
+```
+
+El script realiza automáticamente:
+1. Instala `cloudflared` desde el repositorio oficial de Cloudflare
+2. Abre una URL de autenticación **(única acción manual: copiarla en el navegador)**
+3. Crea el túnel y lo configura apuntando a `http://localhost:3000`
+4. Crea el registro DNS CNAME en Cloudflare
+5. Instala cloudflared como servicio systemd (arranca con el sistema)
+
+### Comandos de gestión del túnel
+
+```bash
+systemctl status cloudflared          # Estado del túnel
+journalctl -u cloudflared -f          # Logs en tiempo real
+systemctl restart cloudflared         # Reiniciar
+cloudflared tunnel list               # Ver todos los túneles
+```
+
+### Comparativa: Cloudflare Tunnel vs Nginx
+
+| | Cloudflare Tunnel | Nginx + Certbot |
+|---|---|---|
+| Puertos abiertos en el servidor | Ninguno | 80 y 443 |
+| SSL/HTTPS | Automático por Cloudflare | Let's Encrypt |
+| Configuración | Script automático | Manual |
+| Requiere dominio en Cloudflare | Sí | No |
+| DDoS protection | Incluida | No |
+
+---
+
 ## Estructura del proyecto
 
 ```

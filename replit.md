@@ -100,4 +100,5 @@ Located in `scripts/` for unattended installation on Ubuntu 20.04/22.04/24.04:
 - **`scripts/update.sh`** — Pull latest from GitHub, rebuild, reload PM2 zero-downtime.
 - **`scripts/backup-db.sh`** — pg_dump compressed to `/var/backups/autotaller/`, auto-rotates 7 days.
 - **`scripts/restore-db.sh`** — Restore from `.sql.gz` file with confirmation prompt.
+- **`scripts/setup-cloudflare.sh`** — Installs cloudflared, creates Cloudflare Tunnel, configures DNS, and registers as systemd service. Usage: `sudo bash setup-cloudflare.sh dominio.com`
 - **`README.md`** — Full installation, configuration, and operations documentation in Spanish.
