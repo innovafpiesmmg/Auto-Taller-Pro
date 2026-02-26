@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Receipt, Edit, Trash2 } from "lucide-react";
+import { Plus, Receipt, Edit, Trash2, Printer, Search, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -51,25 +51,82 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { SelectFactura, Cliente } from "@shared/schema";
+import type { Factura, Cliente, LineaFactura, ConfigEmpresa } from "@shared/schema";
 import { insertFacturaSchema } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
+import { FacturaPrint } from "@/components/factura-print";
+import { PaginationControls } from "@/components/pagination-controls";
+import { exportToCSV } from "@/lib/export-csv";
 
 type FormValues = z.infer<typeof insertFacturaSchema>;
 
 export default function Facturas() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingFactura, setEditingFactura] = useState<SelectFactura | null>(null);
+  const [editingFactura, setEditingFactura] = useState<Factura | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [printFactura, setPrintFactura] = useState<(Factura & { lineas?: LineaFactura[] }) | null>(null);
   const { toast } = useToast();
 
-  const { data: facturas, isLoading } = useQuery<SelectFactura[]>({
+  const { data: facturas, isLoading } = useQuery<Factura[]>({
     queryKey: ["/api/facturas"],
   });
 
   const { data: clientes } = useQuery<Cliente[]>({
     queryKey: ["/api/clientes"],
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orId = params.get('orId');
+    const clienteId = params.get('clienteId');
+
+    if (orId && clienteId && facturas && clientes && !dialogOpen && !editingFactura) {
+      const cliente = clientes.find(c => c.id === parseInt(clienteId));
+      if (cliente) {
+        const newNumero = `F-${Date.now().toString().slice(-6)}`;
+        form.reset({
+          numero: newNumero,
+          serie: "F",
+          tipo: "ordinaria",
+          clienteId: parseInt(clienteId),
+          fecha: new Date(),
+          baseImponible: 0,
+          totalIgic: 0,
+          total: 0,
+          observaciones: `Factura generada desde OR #${orId}`,
+          orId: parseInt(orId)
+        });
+        setDialogOpen(true);
+      }
+    }
+  }, [facturas, clientes]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const filteredFacturas = facturas?.filter(factura => {
+    const searchLower = searchTerm.toLowerCase();
+    const cliente = clientes?.find(c => c.id === factura.clienteId);
+    return (
+      factura.numero.toLowerCase().includes(searchLower) ||
+      factura.serie.toLowerCase().includes(searchLower) ||
+      (cliente?.nombre.toLowerCase().includes(searchLower)) ||
+      (cliente?.nif.toLowerCase().includes(searchLower))
+    );
+  }) || [];
+
+  const paginatedFacturas = filteredFacturas.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
+  const { data: empresa } = useQuery<ConfigEmpresa>({
+    queryKey: ["/api/config/empresa"],
   });
 
   const now = new Date();
@@ -98,7 +155,7 @@ export default function Facturas() {
     return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
   }).length || 0;
 
-  const form = useForm<FormValues>({
+  const form = useForm<any>({
     resolver: zodResolver(insertFacturaSchema.extend({
       clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
     })),
@@ -115,7 +172,7 @@ export default function Facturas() {
     },
   });
 
-  const handleOpenDialog = (factura?: SelectFactura) => {
+  const handleOpenDialog = (factura?: Factura) => {
     if (factura) {
       setEditingFactura(factura);
       form.reset({
@@ -124,9 +181,9 @@ export default function Facturas() {
         tipo: factura.tipo,
         clienteId: factura.clienteId,
         fecha: factura.fecha ? new Date(factura.fecha) : new Date(),
-        baseImponible: parseFloat(factura.baseImponible.toString()),
-        totalIgic: parseFloat(factura.totalIgic.toString()),
-        total: parseFloat(factura.total.toString()),
+        baseImponible: Number(factura.baseImponible),
+        totalIgic: Number(factura.totalIgic),
+        total: Number(factura.total),
         observaciones: factura.observaciones || "",
       });
     } else {
@@ -149,7 +206,10 @@ export default function Facturas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/facturas", "POST", data);
+      return await apiRequest("/api/facturas", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/facturas"] });
@@ -171,7 +231,10 @@ export default function Facturas() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/facturas/${editingFactura?.id}`, "PUT", data);
+      return await apiRequest(`/api/facturas/${editingFactura?.id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/facturas"] });
@@ -194,7 +257,9 @@ export default function Facturas() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/facturas/${id}`, "DELETE");
+      return await apiRequest(`/api/facturas/${id}`, {
+        method: "DELETE",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/facturas"] });
@@ -213,6 +278,19 @@ export default function Facturas() {
     },
   });
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredFacturas.map(f => ({
+      numero: f.numero,
+      fecha: f.fecha ? format(new Date(f.fecha), 'yyyy-MM-dd') : '',
+      concepto: f.observaciones || '',
+      baseImponible: f.baseImponible,
+      igicPct: 7, // Default IGIC
+      totalIgic: f.totalIgic,
+      total: f.total
+    }));
+    exportToCSV(dataToExport, "facturas.csv");
+  };
+
   const onSubmit = (data: FormValues) => {
     if (editingFactura) {
       updateMutation.mutate(data);
@@ -228,10 +306,16 @@ export default function Facturas() {
           <h1 className="text-3xl font-bold">Facturación</h1>
           <p className="text-muted-foreground">Gestión de facturas con IGIC</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} data-testid="button-nueva-factura">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Factura
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV} data-testid="button-exportar-facturas">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => handleOpenDialog()} data-testid="button-nueva-factura">
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Factura
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -294,6 +378,26 @@ export default function Facturas() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Buscar Facturas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por número, serie, cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+                data-testid="input-buscar-factura"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Lista de Facturas</CardTitle>
         </CardHeader>
         <CardContent>
@@ -323,15 +427,15 @@ export default function Facturas() {
                       <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : !facturas || facturas.length === 0 ? (
+                ) : !facturas || paginatedFacturas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Receipt className="h-12 w-12 mb-2 opacity-50" />
                         <p>No hay facturas emitidas</p>
                         <Button 
-                          variant="link" 
-                          className="mt-2" 
+                          variant="ghost" 
+                          className="mt-2 text-primary" 
                           onClick={() => handleOpenDialog()}
                           data-testid="button-crear-primera-factura"
                         >
@@ -341,7 +445,7 @@ export default function Facturas() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  facturas.map((factura) => {
+                  paginatedFacturas.map((factura) => {
                     const cliente = clientes?.find(c => c.id === factura.clienteId);
                     return (
                       <TableRow key={factura.id} data-testid={`row-factura-${factura.id}`}>
@@ -361,6 +465,14 @@ export default function Facturas() {
                         <TableCell>{parseFloat(factura.total.toString()).toFixed(2)} €</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setPrintFactura(factura)}
+                              data-testid={`button-imprimir-${factura.id}`}
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -386,6 +498,13 @@ export default function Facturas() {
               </TableBody>
             </Table>
           </div>
+          <PaginationControls
+            total={filteredFacturas.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
@@ -628,6 +747,16 @@ export default function Facturas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {printFactura && (
+        <FacturaPrint
+          open={!!printFactura}
+          onOpenChange={(open) => !open && setPrintFactura(null)}
+          factura={printFactura}
+          cliente={clientes?.find(c => c.id === printFactura.clienteId)}
+          empresa={empresa}
+        />
+      )}
     </div>
   );
 }

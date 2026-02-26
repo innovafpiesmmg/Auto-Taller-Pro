@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Package, AlertTriangle, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Edit, Trash2, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,59 +43,99 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { SelectArticulo } from "@shared/schema";
+import type { Articulo } from "@shared/schema";
 import { insertArticuloSchema } from "@shared/schema";
 import { z } from "zod";
+import { PaginationControls } from "@/components/pagination-controls";
+import { exportToCSV } from "@/lib/export-csv";
 
-type FormValues = z.infer<typeof insertArticuloSchema>;
+const fmtDecimal = (val: string | null | undefined) =>
+  parseFloat(val || "0").toFixed(2);
+
+const isLowStock = (a: Articulo) => (a.stock ?? 0) <= (a.stockMinimo ?? 0);
+
+type FormValues = {
+  referencia: string;
+  descripcion: string;
+  precioCoste: string;
+  precioVenta: string;
+  stock: number;
+  stockMinimo: number;
+  categoria?: string | null;
+  marca?: string | null;
+  igic?: string | null;
+  activo?: boolean | null;
+};
 
 export default function Articulos() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingArticulo, setEditingArticulo] = useState<SelectArticulo | null>(null);
+  const [editingArticulo, setEditingArticulo] = useState<Articulo | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const { data: articulos, isLoading } = useQuery<SelectArticulo[]>({
+  const { data: articulos, isLoading } = useQuery<Articulo[]>({
     queryKey: ["/api/articulos"],
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, showOnlyLowStock]);
+
   const filteredArticulos = articulos?.filter(articulo => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       articulo.referencia.toLowerCase().includes(searchLower) ||
       articulo.descripcion.toLowerCase().includes(searchLower) ||
       (articulo.categoria?.toLowerCase().includes(searchLower))
     );
+    const matchesLowStock = showOnlyLowStock ? isLowStock(articulo) : true;
+    return matchesSearch && matchesLowStock;
   }) || [];
 
+  const paginatedArticulos = filteredArticulos.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
   const totalArticulos = articulos?.length || 0;
-  const stockBajo = articulos?.filter(a => a.stock <= (a.stockMinimo || 0)).length || 0;
-  const valorStock = articulos?.reduce((sum, a) => sum + (a.precioCoste * a.stock), 0) || 0;
+  const stockBajo = articulos?.filter(isLowStock).length || 0;
+  const valorStock = articulos?.reduce(
+    (sum, a) => sum + parseFloat(a.precioCoste || "0") * (a.stock ?? 0),
+    0
+  ) || 0;
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(insertArticuloSchema),
+    resolver: zodResolver(
+      insertArticuloSchema.extend({
+        precioCoste: z.string().default("0"),
+        precioVenta: z.string().default("0"),
+      })
+    ),
     defaultValues: {
       referencia: "",
       descripcion: "",
-      precioCoste: 0,
-      precioVenta: 0,
+      precioCoste: "0",
+      precioVenta: "0",
       stock: 0,
       stockMinimo: 0,
       categoria: "",
     },
   });
 
-  const handleOpenDialog = (articulo?: SelectArticulo) => {
+  const handleOpenDialog = (articulo?: Articulo) => {
     if (articulo) {
       setEditingArticulo(articulo);
       form.reset({
         referencia: articulo.referencia,
         descripcion: articulo.descripcion,
-        precioCoste: articulo.precioCoste,
-        precioVenta: articulo.precioVenta,
-        stock: articulo.stock,
-        stockMinimo: articulo.stockMinimo || 0,
+        precioCoste: articulo.precioCoste ?? "0",
+        precioVenta: articulo.precioVenta ?? "0",
+        stock: articulo.stock ?? 0,
+        stockMinimo: articulo.stockMinimo ?? 0,
         categoria: articulo.categoria || "",
       });
     } else {
@@ -103,8 +143,8 @@ export default function Articulos() {
       form.reset({
         referencia: "",
         descripcion: "",
-        precioCoste: 0,
-        precioVenta: 0,
+        precioCoste: "0",
+        precioVenta: "0",
         stock: 0,
         stockMinimo: 0,
         categoria: "",
@@ -115,7 +155,7 @@ export default function Articulos() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/articulos", "POST", data);
+      return await apiRequest("/api/articulos", { method: "POST", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articulos"] });
@@ -137,7 +177,7 @@ export default function Articulos() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/articulos/${editingArticulo?.id}`, "PUT", data);
+      return await apiRequest(`/api/articulos/${editingArticulo?.id}`, { method: "PUT", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articulos"] });
@@ -160,7 +200,7 @@ export default function Articulos() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/articulos/${id}`, "DELETE");
+      return await apiRequest(`/api/articulos/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articulos"] });
@@ -179,6 +219,19 @@ export default function Articulos() {
     },
   });
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredArticulos.map(a => ({
+      referencia: a.referencia,
+      descripcion: a.descripcion,
+      categoria: a.categoria || '',
+      precioCoste: a.precioCoste,
+      precioVenta: a.precioVenta,
+      stock: a.stock ?? 0,
+      stockMinimo: a.stockMinimo ?? 0
+    }));
+    exportToCSV(dataToExport, "articulos.csv");
+  };
+
   const onSubmit = (data: FormValues) => {
     if (editingArticulo) {
       updateMutation.mutate(data);
@@ -188,19 +241,25 @@ export default function Articulos() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 lg:space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Artículos & Recambios</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold">Artículos & Recambios</h1>
           <p className="text-muted-foreground">Catálogo y control de stock</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} data-testid="button-nuevo-articulo">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Artículo
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV} data-testid="button-exportar-articulos">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => handleOpenDialog()} data-testid="button-nuevo-articulo">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Artículo
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Artículos</CardTitle>
@@ -210,9 +269,7 @@ export default function Articulos() {
             <div className="text-2xl font-bold" data-testid="text-total-articulos">
               {isLoading ? <Skeleton className="h-8 w-16" /> : totalArticulos}
             </div>
-            <p className="text-xs text-muted-foreground">
-              En catálogo
-            </p>
+            <p className="text-xs text-muted-foreground">En catálogo</p>
           </CardContent>
         </Card>
 
@@ -225,13 +282,11 @@ export default function Articulos() {
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-500" data-testid="text-stock-bajo">
               {isLoading ? <Skeleton className="h-8 w-16" /> : stockBajo}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Requieren reposición
-            </p>
+            <p className="text-xs text-muted-foreground">Requieren reposición</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="col-span-2 lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Valor Stock</CardTitle>
           </CardHeader>
@@ -239,9 +294,7 @@ export default function Articulos() {
             <div className="text-2xl font-bold" data-testid="text-valor-stock">
               {isLoading ? <Skeleton className="h-8 w-24" /> : `${valorStock.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Valoración actual
-            </p>
+            <p className="text-xs text-muted-foreground">Valoración actual</p>
           </CardContent>
         </Card>
       </div>
@@ -251,7 +304,7 @@ export default function Articulos() {
           <CardTitle>Buscar Artículos</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -262,6 +315,15 @@ export default function Articulos() {
                 data-testid="input-buscar-articulo"
               />
             </div>
+            <Button
+              variant={showOnlyLowStock ? "default" : "outline"}
+              onClick={() => setShowOnlyLowStock(!showOnlyLowStock)}
+              className="flex items-center gap-2 shrink-0"
+              data-testid="button-filtro-stock-bajo"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Solo stock bajo
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -271,16 +333,16 @@ export default function Articulos() {
           <CardTitle>Catálogo de Artículos</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-md">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Referencia</TableHead>
                   <TableHead>Descripción</TableHead>
-                  <TableHead>Categoría</TableHead>
+                  <TableHead className="hidden md:table-cell">Categoría</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead>Precio Coste</TableHead>
-                  <TableHead>Precio Venta</TableHead>
+                  <TableHead className="hidden sm:table-cell">P. Coste</TableHead>
+                  <TableHead>P. Venta</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -290,22 +352,22 @@ export default function Articulos() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : filteredArticulos.length === 0 ? (
+                ) : paginatedArticulos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
                         <Package className="h-12 w-12 mb-2 opacity-50" />
                         <p>No hay artículos en el catálogo</p>
-                        <Button 
-                          variant="link" 
-                          className="mt-2" 
+                        <Button
+                          variant="ghost"
+                          className="mt-2"
                           onClick={() => handleOpenDialog()}
                           data-testid="button-crear-primer-articulo"
                         >
@@ -315,46 +377,55 @@ export default function Articulos() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredArticulos.map((articulo) => (
+                  paginatedArticulos.map((articulo) => (
                     <TableRow key={articulo.id} data-testid={`row-articulo-${articulo.id}`}>
                       <TableCell className="font-medium" data-testid={`text-referencia-${articulo.id}`}>
-                        {articulo.referencia}
+                        <div className="flex flex-col gap-1">
+                          {articulo.referencia}
+                          {isLowStock(articulo) && (
+                            <Badge variant="destructive" className="w-fit text-[10px] px-1 h-4">
+                              Stock Bajo
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell data-testid={`text-descripcion-${articulo.id}`}>
                         {articulo.descripcion}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {articulo.categoria ? (
                           <Badge variant="secondary">{articulo.categoria}</Badge>
                         ) : '-'}
                       </TableCell>
                       <TableCell data-testid={`text-stock-${articulo.id}`}>
                         <div className="flex items-center gap-2">
-                          <span>{articulo.stock}</span>
-                          {articulo.stock <= (articulo.stockMinimo || 0) && (
-                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          <span className={isLowStock(articulo) ? "text-amber-600 dark:text-amber-500 font-medium" : ""}>
+                            {articulo.stock ?? 0}
+                          </span>
+                          {isLowStock(articulo) && (
+                            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                           )}
                         </div>
                       </TableCell>
-                      <TableCell data-testid={`text-precio-coste-${articulo.id}`}>
-                        {articulo.precioCoste.toFixed(2)} €
+                      <TableCell className="hidden sm:table-cell" data-testid={`text-precio-coste-${articulo.id}`}>
+                        {fmtDecimal(articulo.precioCoste)} €
                       </TableCell>
                       <TableCell data-testid={`text-precio-venta-${articulo.id}`}>
-                        {articulo.precioVenta.toFixed(2)} €
+                        {fmtDecimal(articulo.precioVenta)} €
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleOpenDialog(articulo)}
                             data-testid={`button-editar-${articulo.id}`}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setDeleteId(articulo.id)}
                             data-testid={`button-eliminar-${articulo.id}`}
                           >
@@ -368,6 +439,13 @@ export default function Articulos() {
               </TableBody>
             </Table>
           </div>
+          <PaginationControls
+            total={filteredArticulos.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
@@ -379,12 +457,12 @@ export default function Articulos() {
               {editingArticulo ? "Modifica los datos del artículo" : "Completa el formulario para crear un nuevo artículo"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="referencia"
                   render={({ field }) => (
                     <FormItem>
@@ -398,13 +476,13 @@ export default function Articulos() {
                 />
 
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="categoria"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Categoría (opcional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="Filtros, Aceites..." {...field} data-testid="input-categoria" />
+                        <Input placeholder="Filtros, Aceites..." {...field} value={field.value ?? ""} data-testid="input-categoria" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -413,7 +491,7 @@ export default function Articulos() {
               </div>
 
               <FormField
-                control={form.control}
+                control={form.control as any}
                 name="descripcion"
                 render={({ field }) => (
                   <FormItem>
@@ -428,7 +506,7 @@ export default function Articulos() {
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="precioCoste"
                   render={({ field }) => (
                     <FormItem>
@@ -439,7 +517,6 @@ export default function Articulos() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           data-testid="input-precio-coste"
                         />
                       </FormControl>
@@ -449,7 +526,7 @@ export default function Articulos() {
                 />
 
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="precioVenta"
                   render={({ field }) => (
                     <FormItem>
@@ -460,7 +537,6 @@ export default function Articulos() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           data-testid="input-precio-venta"
                         />
                       </FormControl>
@@ -472,7 +548,7 @@ export default function Articulos() {
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="stock"
                   render={({ field }) => (
                     <FormItem>
@@ -492,7 +568,7 @@ export default function Articulos() {
                 />
 
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="stockMinimo"
                   render={({ field }) => (
                     <FormItem>
@@ -513,16 +589,16 @@ export default function Articulos() {
               </div>
 
               <div className="flex justify-end gap-3">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setDialogOpen(false)}
                   data-testid="button-cancelar"
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                   data-testid="button-guardar"
                 >

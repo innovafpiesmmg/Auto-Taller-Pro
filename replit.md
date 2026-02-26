@@ -49,26 +49,33 @@ The system uses a modern full-stack architecture. The frontend is built with **R
 - **State Management**: React Query for data fetching and caching.
 - **Database**: PostgreSQL with Drizzle ORM.
 - **Core Modules**:
-    - **Dashboard**: Real-time KPIs, daily appointments, recent orders.
-    - **Customer & Vehicle Management**: Full CRUD for clients and vehicles, including DGT environmental label calculation (basic).
-    - **Calendar & Appointments**: Visual calendar with status management.
-    - **Repair Orders (OR)**: Lifecycle management, work parts, item consumption, digital signature.
-    - **Quotes**: Creation with labor and item lines, approval, IGIC calculation.
-    - **Item Catalog**: Reference, stock, pricing, minimum stock control.
-    - **IGIC Invoicing**: Multiple invoice types, configurable IGIC rates.
+    - **Dashboard**: Real-time KPIs, charts (monthly income bar chart, order status pie chart), low stock alert KPI, daily appointments, recent orders. Refetch every 30s.
+    - **Customer & Vehicle Management**: Full CRUD for clients and vehicles. CarAPI integration for make/model autocomplete and VIN decoding with graceful fallback.
+    - **Calendar & Appointments**: Visual calendar (monthly + weekly view with hourly slots), appointment duration field (30/60/90/120 min), quick "Crear OR" button for confirmed appointments.
+    - **Repair Orders (OR)**: Full detail view with work parts (partes de trabajo), item consumptions (recambios), real-time economic totals (MO + parts + IGIC), status change buttons, "Crear Factura" when terminada. Quick "Crear Factura" button from order list.
+    - **Quotes**: Creation with detailed line items (mano de obra, artículo, otros), real-time totals, buttons to create OR and Invoice from quote.
+    - **Item Catalog**: Reference, stock, pricing, low stock alerts (badge + filter), minimum stock control.
+    - **IGIC Invoicing**: Multiple invoice types, configurable IGIC rates. Printable invoice dialog with company branding. Auto-open with pre-filled data from OR→Factura workflow.
     - **Payments & Cash Register**: Multiple payment methods, cash reconciliation.
+    - **Reports & Statistics**: `/informes` page with 4 tabs: Billing (bar chart, top clients), Orders (donut chart), Clients (KPIs), Inventory (low stock table).
     - **After-Sales CRM**: Automated campaigns, satisfaction surveys.
     - **Waste Management**: Compliance with Canary Islands regulations, cataloging (LER), container management, generation logging.
     - **Purchasing & Warehouse**: Full CRUD for suppliers, purchase orders, goods receipts, multi-warehouse location system.
     - **User Management**: Full CRUD for users with RBAC.
     - **Company Configuration**: Branding customization (logo, name, contact info) and CarAPI integration settings.
+    - **Global Search**: Header search across clients, vehicles, and orders with debounce.
+    - **CSV Export**: Export filtered data from Clients, Vehicles, Items, Invoices, and Orders.
+    - **Pagination**: Client-side pagination (default 25 rows) on all major listing pages.
 
 **System Design Choices**:
-- Consistent CRUD pattern across 8 main pages (Clients, Vehicles, Appointments, Items, Repair Orders, Quotes, Invoices, Payments).
+- Consistent CRUD pattern across main pages with pagination and CSV export.
 - Optimized cache invalidation using stable queryKeys.
 - Robust date handling by converting ISO strings to Date objects in the backend.
 - API requests handle `204 No Content` gracefully.
 - Password management in user editing allows optional updates.
+- Drizzle decimal fields map to `string` in TypeScript — use parseFloat() for arithmetic.
+- Sidebar auto-collapses on viewports < 1280px for tablet/mobile.
+- Responsive tables with `overflow-x-auto` and hidden columns on small screens.
 
 ## External Dependencies
 - **PostgreSQL (Neon)**: Main database.

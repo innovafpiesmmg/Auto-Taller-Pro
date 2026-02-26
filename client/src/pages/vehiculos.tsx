@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Car, Edit, Trash2, Leaf } from "lucide-react";
+import { Plus, Search, Car, Edit, Trash2, Leaf, Scan, Loader2, Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -55,11 +55,15 @@ import type { Vehiculo, InsertVehiculo, Cliente } from "@shared/schema";
 import { insertVehiculoSchema } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
+import { PaginationControls } from "@/components/pagination-controls";
+import { exportToCSV } from "@/lib/export-csv";
 
 type FormValues = z.infer<typeof insertVehiculoSchema>;
 
 export default function Vehiculos() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVehiculo, setEditingVehiculo] = useState<Vehiculo | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -67,6 +71,11 @@ export default function Vehiculos() {
     etiqueta: string;
     info: { nombre: string; color: string; descripcion: string };
   } | null>(null);
+  const [carapiMakes, setCarapiMakes] = useState<{ id: number; name: string }[]>([]);
+  const [carapiModels, setCarapiModels] = useState<{ id: number; name: string }[]>([]);
+  const [isDecodingVin, setIsDecodingVin] = useState(false);
+  const [isLoadingMakes, setIsLoadingMakes] = useState(false);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
   const { toast } = useToast();
 
   const { data: vehiculos, isLoading } = useQuery<Vehiculo[]>({
@@ -77,6 +86,10 @@ export default function Vehiculos() {
     queryKey: ["/api/clientes"],
   });
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
   const filteredVehiculos = vehiculos?.filter(vehiculo => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -86,6 +99,11 @@ export default function Vehiculos() {
       vehiculo.modelo.toLowerCase().includes(searchLower)
     );
   }) || [];
+
+  const paginatedVehiculos = filteredVehiculos.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(insertVehiculoSchema.extend({
@@ -271,12 +289,10 @@ export default function Vehiculos() {
   });
 
   const calcularEtiquetaMutation = useMutation({
-    mutationFn: async (id: number) =>
-      await apiRequest<{
-        etiqueta: string;
-        info: { nombre: string; color: string; descripcion: string };
-      }>(`/api/vehiculos/${id}/etiqueta-dgt`),
-    onSuccess: (data) => {
+    mutationFn: async (id: number) => {
+      return await apiRequest(`/api/vehiculos/${id}/etiqueta-dgt`);
+    },
+    onSuccess: (data: any) => {
       setEtiquetaDGT(data);
       queryClient.invalidateQueries({ queryKey: ["/api/vehiculos"] });
       toast({
@@ -301,6 +317,112 @@ export default function Vehiculos() {
     }
   };
 
+  const loadMakes = async (year: number) => {
+    setIsLoadingMakes(true);
+    try {
+      const response = await apiRequest(`/api/carapi/makes?year=${year}`);
+      setCarapiMakes(response);
+    } catch (error) {
+      console.error("Error loading makes:", error);
+      setCarapiMakes([]);
+    } finally {
+      setIsLoadingMakes(false);
+    }
+  };
+
+  const loadModels = async (makeId: number, year: number) => {
+    setIsLoadingModels(true);
+    try {
+      const response = await apiRequest(`/api/carapi/models?makeId=${makeId}&year=${year}`);
+      setCarapiModels(response);
+    } catch (error) {
+      console.error("Error loading models:", error);
+      setCarapiModels([]);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  const decodeVin = async () => {
+    const vin = form.getValues("vin");
+    if (!vin || vin.length < 11) {
+      toast({
+        variant: "destructive",
+        title: "VIN inválido",
+        description: "Por favor, introduce un VIN válido (al menos 11 caracteres)",
+      });
+      return;
+    }
+
+    setIsDecodingVin(true);
+    try {
+      const data = await apiRequest(`/api/carapi/vin/${vin}`);
+      
+      // Rellenar el formulario
+      if (data.year) form.setValue("año", data.year);
+      if (data.make) form.setValue("marca", data.make);
+      if (data.model) form.setValue("modelo", data.model);
+      if (data.fuel_type) form.setValue("combustible", data.fuel_type);
+      if (data.trim) form.setValue("version", data.trim);
+
+      toast({
+        title: "VIN Decodificado",
+        description: "Los datos del vehículo se han rellenado automáticamente",
+      });
+
+      // Intentar cargar marcas para el año decodificado
+      if (data.year) {
+        loadMakes(data.year);
+      }
+    } catch (error) {
+      console.error("Error decoding VIN:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo decodificar el VIN o la API no está configurada",
+      });
+    } finally {
+      setIsDecodingVin(false);
+    }
+  };
+
+  const selectedYear = form.watch("año");
+  const selectedMarca = form.watch("marca");
+
+  useEffect(() => {
+    if (selectedYear && selectedYear >= 1990 && selectedYear <= new Date().getFullYear() + 1) {
+      loadMakes(selectedYear);
+    } else {
+      setCarapiMakes([]);
+    }
+  }, [selectedYear]);
+
+  useEffect(() => {
+    if (selectedMarca && carapiMakes.length > 0 && selectedYear) {
+      const make = carapiMakes.find(m => m.name.toLowerCase() === selectedMarca.toLowerCase());
+      if (make) {
+        loadModels(make.id, selectedYear);
+      } else {
+        setCarapiModels([]);
+      }
+    } else {
+      setCarapiModels([]);
+    }
+  }, [selectedMarca, carapiMakes, selectedYear]);
+
+  const handleExportCSV = () => {
+    const dataToExport = filteredVehiculos.map(v => ({
+      id: v.id,
+      matricula: v.matricula,
+      vin: v.vin || '',
+      marca: v.marca,
+      modelo: v.modelo,
+      anio: v.año || '',
+      combustible: v.combustible || ''
+    }));
+    exportToCSV(dataToExport, "vehiculos.csv");
+  };
+
   const getClienteNombre = (clienteId: number) => {
     const cliente = clientes?.find(c => c.id === clienteId);
     if (!cliente) return "-";
@@ -316,10 +438,16 @@ export default function Vehiculos() {
           <h1 className="text-3xl font-bold">Vehículos</h1>
           <p className="text-muted-foreground">Gestión de vehículos</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} data-testid="button-nuevo-vehiculo">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Vehículo
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV} data-testid="button-exportar-vehiculos">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => handleOpenDialog()} data-testid="button-nuevo-vehiculo">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Vehículo
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -373,7 +501,7 @@ export default function Vehiculos() {
                       <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : filteredVehiculos.length === 0 ? (
+                ) : paginatedVehiculos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -391,7 +519,7 @@ export default function Vehiculos() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredVehiculos.map((vehiculo) => (
+                  paginatedVehiculos.map((vehiculo) => (
                     <TableRow key={vehiculo.id} data-testid={`row-vehiculo-${vehiculo.id}`}>
                       <TableCell className="font-medium" data-testid={`text-matricula-${vehiculo.id}`}>
                         {vehiculo.matricula}
@@ -449,6 +577,13 @@ export default function Vehiculos() {
               </TableBody>
             </Table>
           </div>
+          <PaginationControls
+            total={filteredVehiculos.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
@@ -518,9 +653,27 @@ export default function Vehiculos() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>VIN/Bastidor</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="WVW..." data-testid="input-vin" />
-                      </FormControl>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value || ""} 
+                            placeholder="WVW..." 
+                            data-testid="input-vin" 
+                          />
+                        </FormControl>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={decodeVin} 
+                          disabled={isDecodingVin}
+                          title="Decodificar VIN"
+                          data-testid="button-decode-vin"
+                        >
+                          {isDecodingVin ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scan className="h-4 w-4" />}
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -534,9 +687,29 @@ export default function Vehiculos() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Marca *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Toyota" data-testid="input-marca" />
-                      </FormControl>
+                      {carapiMakes.length > 0 ? (
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-marca">
+                              <SelectValue placeholder="Selecciona marca" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {carapiMakes.map((make) => (
+                              <SelectItem key={make.id} value={make.name}>
+                                {make.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <FormControl>
+                          <Input {...field} placeholder="Toyota" data-testid="input-marca" />
+                        </FormControl>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -548,44 +721,170 @@ export default function Vehiculos() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Modelo *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Corolla" data-testid="input-modelo" />
-                      </FormControl>
+                      {carapiModels.length > 0 ? (
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-modelo">
+                              <SelectValue placeholder="Selecciona modelo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {carapiModels.map((model) => (
+                              <SelectItem key={model.id} value={model.name}>
+                                {model.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <FormControl>
+                          <Input {...field} placeholder="Corolla" data-testid="input-modelo" />
+                        </FormControl>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="version"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Versión</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="1.8 Hybrid" data-testid="input-version" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="año"
+                  name="version"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Año</FormLabel>
+                      <FormLabel>Versión</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
-                          type="number" 
-                          placeholder="2020" 
-                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                          value={field.value || ""}
-                          data-testid="input-año"
+                          value={field.value || ""} 
+                          placeholder="1.8 Hybrid" 
+                          data-testid="input-version" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="año"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Año</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            placeholder="2020" 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            value={field.value || ""}
+                            data-testid="input-año"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="combustible"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Combustible</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value || ""} 
+                            placeholder="Gasolina" 
+                            data-testid="input-combustible" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="km"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Kilómetros</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="number" 
+                            placeholder="50000" 
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            value={field.value || ""}
+                            data-testid="input-km"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="itvFecha"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha ITV</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            type="date" 
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                            value={field.value ? format(new Date(field.value), "yyyy-MM-dd") : ""}
+                            data-testid="input-itv"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="color"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Color</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            value={field.value || ""} 
+                            placeholder="Blanco" 
+                            data-testid="input-color" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="seguro"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Seguro</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder="Mapfre" 
+                          data-testid="input-seguro" 
                         />
                       </FormControl>
                       <FormMessage />
@@ -595,103 +894,22 @@ export default function Vehiculos() {
 
                 <FormField
                   control={form.control}
-                  name="combustible"
+                  name="observaciones"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Combustible</FormLabel>
+                      <FormLabel>Observaciones</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Gasolina" data-testid="input-combustible" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="km"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Kilómetros</FormLabel>
-                      <FormControl>
-                        <Input 
+                        <Textarea 
                           {...field} 
-                          type="number" 
-                          placeholder="50000" 
-                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                          value={field.value || ""}
-                          data-testid="input-km"
+                          value={field.value || ""} 
+                          placeholder="Notas adicionales" 
+                          data-testid="input-observaciones" 
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="itvFecha"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fecha ITV</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="date" 
-                          onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                          value={field.value ? format(new Date(field.value), "yyyy-MM-dd") : ""}
-                          data-testid="input-itv"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="color"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Color</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Blanco" data-testid="input-color" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="seguro"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Seguro</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Mapfre" data-testid="input-seguro" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="observaciones"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observaciones</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} placeholder="Notas adicionales" data-testid="input-observaciones" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               {/* Etiqueta Ambiental DGT */}
               {editingVehiculo && (

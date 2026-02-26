@@ -354,3 +354,29 @@
     inset: -1px;
   }
 }
+
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  
+  body > :not(.print-show) {
+    display: none !important;
+  }
+
+  .print-show {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    z-index: 9999;
+    background: white !important;
+  }
+
+  /* Ensure background colors and images are printed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

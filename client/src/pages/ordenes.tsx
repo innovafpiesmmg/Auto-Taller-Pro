@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, ClipboardList, Calendar, Edit, Trash2 } from "lucide-react";
+import { Plus, ClipboardList, Calendar, Edit, Trash2, Search, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,10 +44,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { SelectOrdenReparacion, Cliente, Vehiculo } from "@shared/schema";
+import type { OrdenReparacion, Cliente, Vehiculo } from "@shared/schema";
 import { insertOrdenReparacionSchema } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
+import { PaginationControls } from "@/components/pagination-controls";
+import { exportToCSV } from "@/lib/export-csv";
 
 type FormValues = z.infer<typeof insertOrdenReparacionSchema>;
 
@@ -70,12 +72,15 @@ const estadoLabels = {
 export default function Ordenes() {
   const estados: Array<keyof typeof estadoColors> = ["abierta", "en_curso", "a_la_espera", "terminada", "facturada"];
   const [, navigate] = useLocation();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingOrden, setEditingOrden] = useState<SelectOrdenReparacion | null>(null);
+  const [editingOrden, setEditingOrden] = useState<OrdenReparacion | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const { data: ordenes, isLoading } = useQuery<SelectOrdenReparacion[]>({
+  const { data: ordenes, isLoading } = useQuery<OrdenReparacion[]>({
     queryKey: ["/api/ordenes"],
   });
 
@@ -86,6 +91,26 @@ export default function Ordenes() {
   const { data: vehiculos } = useQuery<Vehiculo[]>({
     queryKey: ["/api/vehiculos"],
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
+
+  const filteredOrdenes = ordenes?.filter(orden => {
+    const searchLower = searchTerm.toLowerCase();
+    const cliente = clientes?.find(c => c.id === orden.clienteId);
+    const vehiculo = vehiculos?.find(v => v.id === orden.vehiculoId);
+    return (
+      orden.codigo.toLowerCase().includes(searchLower) ||
+      (cliente?.nombre.toLowerCase().includes(searchLower)) ||
+      (vehiculo?.matricula.toLowerCase().includes(searchLower))
+    );
+  }) || [];
+
+  const paginatedOrdenes = filteredOrdenes.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(insertOrdenReparacionSchema.extend({
@@ -103,7 +128,7 @@ export default function Ordenes() {
     },
   });
 
-  const handleOpenDialog = (orden?: SelectOrdenReparacion) => {
+  const handleOpenDialog = (orden?: OrdenReparacion) => {
     if (orden) {
       setEditingOrden(orden);
       form.reset({
@@ -133,7 +158,7 @@ export default function Ordenes() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/ordenes", "POST", data);
+      return await apiRequest("/api/ordenes", { method: "POST", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
@@ -155,7 +180,7 @@ export default function Ordenes() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/ordenes/${editingOrden?.id}`, "PUT", data);
+      return await apiRequest(`/api/ordenes/${editingOrden?.id}`, { method: "PUT", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
@@ -178,7 +203,7 @@ export default function Ordenes() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/ordenes/${id}`, "DELETE");
+      return await apiRequest(`/api/ordenes/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
@@ -196,6 +221,16 @@ export default function Ordenes() {
       });
     },
   });
+
+  const handleExportCSV = () => {
+    const dataToExport = filteredOrdenes.map(o => ({
+      codigo: o.codigo,
+      fechaApertura: o.fechaApertura ? format(new Date(o.fechaApertura), 'yyyy-MM-dd') : '',
+      estado: o.estado,
+      kilometrajeEntrada: o.kmEntrada || 0
+    }));
+    exportToCSV(dataToExport, "ordenes.csv");
+  };
 
   const onSubmit = (data: FormValues) => {
     if (editingOrden) {
@@ -215,15 +250,41 @@ export default function Ordenes() {
           <h1 className="text-3xl font-bold">Órdenes de Reparación</h1>
           <p className="text-muted-foreground">Gestión de órdenes de reparación</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} data-testid="button-nueva-or">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva OR
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV} data-testid="button-exportar-ordenes">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => handleOpenDialog()} data-testid="button-nueva-or">
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva OR
+          </Button>
+        </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Buscar Órdenes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por código, cliente, matrícula..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+                data-testid="input-buscar-orden"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4">
         {estados.map((estado) => {
-          const ordenesEstado = ordenes?.filter(o => o.estado === estado) || [];
+          const ordenesEstado = paginatedOrdenes.filter(o => o.estado === estado);
           return (
             <Card key={estado}>
               <CardHeader>
@@ -284,6 +345,16 @@ export default function Ordenes() {
                                 )}
                               </div>
                               <div className="flex gap-2">
+                                {orden.estado === 'terminada' && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => navigate(`/facturas?orId=${orden.id}&clienteId=${orden.clienteId}`)}
+                                    data-testid={`button-crear-factura-orden-${orden.id}`}
+                                  >
+                                    Crear Factura
+                                  </Button>
+                                )}
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -321,6 +392,14 @@ export default function Ordenes() {
           );
         })}
       </div>
+
+      <PaginationControls
+        total={filteredOrdenes.length}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl" data-testid="dialog-orden">
@@ -468,6 +547,7 @@ export default function Ordenes() {
                           type="number"
                           placeholder="0"
                           {...field}
+                          value={field.value ?? 0}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           data-testid="input-kilometraje"
                         />
@@ -488,6 +568,7 @@ export default function Ordenes() {
                       <Textarea
                         placeholder="Observaciones sobre la orden"
                         {...field}
+                        value={field.value || ""}
                         data-testid="input-observaciones"
                       />
                     </FormControl>

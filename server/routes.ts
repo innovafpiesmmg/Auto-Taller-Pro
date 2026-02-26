@@ -761,6 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const facturas = await storage.getFacturas();
       const clientes = await storage.getClientes();
       const vehiculos = await storage.getVehiculos();
+      const articulos = await storage.getArticulos();
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -777,22 +778,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return fecha >= today && fecha < tomorrow;
       });
 
-      const ingresosHoy = facturasHoy.reduce((sum, f) => sum + parseFloat(f.total.toString()), 0);
+      const ingresosHoy = facturasHoy.reduce((sum, f) => sum + parseFloat((f.total || "0").toString()), 0);
 
       const ordenesAbiertas = ordenes.filter(o => 
-        o.estado !== 'facturada' && o.estado !== 'terminada'
+        o.estado === 'abierta' || o.estado === 'en_curso'
       ).length;
+
+      // Calcular ingresos mensuales (últimos 6 meses)
+      const ingresosMensuales = [];
+      const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const mesIndex = d.getMonth();
+        const año = d.getFullYear();
+        
+        const totalMes = facturas
+          .filter(f => {
+            const fecha = new Date(f.fecha);
+            return fecha.getMonth() === mesIndex && fecha.getFullYear() === año;
+          })
+          .reduce((sum, f) => sum + parseFloat((f.total || "0").toString()), 0);
+          
+        ingresosMensuales.push({
+          mes: `${meses[mesIndex]} ${año}`,
+          total: totalMes
+        });
+      }
+
+      const articulosBajoStock = articulos.filter(a => (a.stock ?? 0) <= (a.stockMinimo ?? 0)).length;
 
       res.json({
         ordenesAbiertas,
         citasHoy: citasHoy.length,
         ingresosHoy,
-        ocupacion: 0,
+        ocupacion: Math.round((ordenesAbiertas / 10) * 100), // Ejemplo: asumiendo 10 boxes
         totalClientes: clientes.length,
         totalVehiculos: vehiculos.length,
-        ordenesDelMes: ordenes.length,
+        ordenesDelMes: ordenes.filter(o => {
+          const d = new Date(o.fechaApertura || "");
+          return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+        }).length,
         citasHoyData: citasHoy,
         ordenesRecientes: ordenes.slice(0, 5),
+        ingresosMensuales,
+        articulosBajoStock,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

@@ -105,6 +105,7 @@ export const citas = pgTable("citas", {
   clienteId: integer("cliente_id").notNull().references(() => clientes.id),
   vehiculoId: integer("vehiculo_id").notNull().references(() => vehiculos.id),
   fechaHora: timestamp("fecha_hora").notNull(),
+  duracion: integer("duracion").default(60),
   motivo: text("motivo").notNull(),
   estado: estadoCitaEnum("estado").notNull().default("pendiente"),
   canal: varchar("canal", { length: 50 }).default("telefono"),
@@ -192,6 +193,7 @@ export const presupuestos = pgTable("presupuestos", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   aprobado: boolean("aprobado").default(false),
   fechaAprobacion: timestamp("fecha_aprobacion"),
+  lineas: text("lineas"),
   notas: text("notas"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

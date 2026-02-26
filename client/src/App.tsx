@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { GlobalSearch } from "@/components/global-search";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -34,6 +35,7 @@ import GestoresResiduos from "@/pages/gestores-residuos";
 import RegistrosResiduos from "@/pages/registros-residuos";
 import DocumentosDI from "@/pages/documentos-di";
 import RecogidasResiduos from "@/pages/recogidas-residuos";
+import Informes from "@/pages/informes";
 import Configuracion from "@/pages/configuracion";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -56,20 +58,25 @@ function ProtectedRouter() {
   }
 
   const sidebarStyle = {
-    "--sidebar-width": "20rem",
-    "--sidebar-width-icon": "4rem",
+    "--sidebar-width": "18rem",
+    "--sidebar-width-icon": "3.5rem",
   } as React.CSSProperties;
 
+  const defaultOpen = typeof window !== "undefined" && window.innerWidth >= 1280;
+
   return (
-    <SidebarProvider style={sidebarStyle}>
+    <SidebarProvider style={sidebarStyle} defaultOpen={defaultOpen}>
       <div className="flex h-screen w-full">
         <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between p-4 border-b bg-background">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                {user?.nombre} ({user?.rol})
+        <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+          <header className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-3 border-b bg-background shrink-0">
+            <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
+            <div className="flex-1 flex justify-center min-w-0">
+              <GlobalSearch />
+            </div>
+            <div className="flex items-center gap-1 lg:gap-3 shrink-0">
+              <div className="text-sm text-muted-foreground hidden xl:block whitespace-nowrap">
+                {user?.nombre} · <span className="capitalize">{user?.rol?.replace('_', ' ')}</span>
               </div>
               <ThemeToggle />
               <Button
@@ -79,11 +86,11 @@ function ProtectedRouter() {
                 data-testid="button-logout"
                 title="Cerrar sesión"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-4 lg:p-6">
             <Switch>
               <Route path="/" component={Dashboard} />
               <Route path="/usuarios" component={Usuarios} />
@@ -109,6 +116,7 @@ function ProtectedRouter() {
               <Route path="/registros-residuos" component={RegistrosResiduos} />
               <Route path="/documentos-di" component={DocumentosDI} />
               <Route path="/recogidas-residuos" component={RecogidasResiduos} />
+              <Route path="/informes" component={Informes} />
               <Route path="/configuracion" component={Configuracion} />
               <Route component={NotFound} />
             </Switch>

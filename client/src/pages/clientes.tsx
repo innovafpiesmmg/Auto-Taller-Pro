@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, User, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, User, Edit, Trash2, Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -55,11 +55,15 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Cliente, InsertCliente } from "@shared/schema";
 import { insertClienteSchema } from "@shared/schema";
 import { z } from "zod";
+import { PaginationControls } from "@/components/pagination-controls";
+import { exportToCSV } from "@/lib/export-csv";
 
 type FormValues = z.infer<typeof insertClienteSchema>;
 
 export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -68,6 +72,10 @@ export default function Clientes() {
   const { data: clientes, isLoading } = useQuery<Cliente[]>({
     queryKey: ["/api/clientes"],
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm]);
 
   const filteredClientes = clientes?.filter(cliente => {
     const searchLower = searchTerm.toLowerCase();
@@ -80,6 +88,11 @@ export default function Clientes() {
       (cliente.movil?.includes(searchTerm))
     );
   }) || [];
+
+  const paginatedClientes = filteredClientes.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(insertClienteSchema),
@@ -222,6 +235,19 @@ export default function Clientes() {
     },
   });
 
+  const handleExportCSV = () => {
+    const dataToExport = filteredClientes.map(c => ({
+      id: c.id,
+      tipo: c.tipo,
+      nombre: c.tipo === 'empresa' ? c.razonSocial : c.nombre,
+      nif: c.nif,
+      email: c.email || '',
+      telefono: c.movil || c.telefono || '',
+      ciudad: c.ciudad || ''
+    }));
+    exportToCSV(dataToExport, "clientes.csv");
+  };
+
   const onSubmit = (data: FormValues) => {
     if (editingCliente) {
       updateMutation.mutate(data);
@@ -237,10 +263,16 @@ export default function Clientes() {
           <h1 className="text-3xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">Gestión de clientes del taller</p>
         </div>
-        <Button onClick={() => handleOpenDialog()} data-testid="button-nuevo-cliente">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportCSV} data-testid="button-exportar-clientes">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => handleOpenDialog()} data-testid="button-nuevo-cliente">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Cliente
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -292,7 +324,7 @@ export default function Clientes() {
                       <TableCell><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : filteredClientes.length === 0 ? (
+                ) : paginatedClientes.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -310,7 +342,7 @@ export default function Clientes() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredClientes.map((cliente) => (
+                  paginatedClientes.map((cliente) => (
                     <TableRow key={cliente.id} data-testid={`row-cliente-${cliente.id}`}>
                       <TableCell className="font-medium" data-testid={`text-nif-${cliente.id}`}>
                         {cliente.nif}
@@ -353,6 +385,13 @@ export default function Clientes() {
               </TableBody>
             </Table>
           </div>
+          <PaginationControls
+            total={filteredClientes.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </CardContent>
       </Card>
 
@@ -415,9 +454,14 @@ export default function Clientes() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nombre</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Juan" data-testid="input-nombre" />
-                        </FormControl>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Juan" 
+                        data-testid="input-nombre" 
+                      />
+                    </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -430,8 +474,13 @@ export default function Clientes() {
                       <FormItem>
                         <FormLabel>Apellidos</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="García Pérez" data-testid="input-apellidos" />
-                        </FormControl>
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder="García Pérez" 
+                          data-testid="input-apellidos" 
+                        />
+                      </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -445,7 +494,12 @@ export default function Clientes() {
                     <FormItem>
                       <FormLabel>Razón Social</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Empresa S.L." data-testid="input-razon-social" />
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder="Empresa S.L." 
+                          data-testid="input-razon-social" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -461,7 +515,13 @@ export default function Clientes() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input {...field} type="email" placeholder="cliente@ejemplo.com" data-testid="input-email" />
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          type="email" 
+                          placeholder="cliente@ejemplo.com" 
+                          data-testid="input-email" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -475,7 +535,12 @@ export default function Clientes() {
                     <FormItem>
                       <FormLabel>Móvil</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="612345678" data-testid="input-movil" />
+                        <Input 
+                          {...field} 
+                          value={field.value || ""} 
+                          placeholder="612345678" 
+                          data-testid="input-movil" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -490,7 +555,12 @@ export default function Clientes() {
                   <FormItem>
                     <FormLabel>Teléfono Fijo</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="928123456" data-testid="input-telefono" />
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="928123456" 
+                        data-testid="input-telefono" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -504,7 +574,12 @@ export default function Clientes() {
                   <FormItem>
                     <FormLabel>Dirección</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Calle Principal, 123" data-testid="input-direccion" />
+                      <Textarea 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Calle Principal, 123" 
+                        data-testid="input-direccion" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -518,9 +593,14 @@ export default function Clientes() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Código Postal</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="35001" data-testid="input-cp" />
-                      </FormControl>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="35001" 
+                        data-testid="input-cp" 
+                      />
+                    </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -532,9 +612,14 @@ export default function Clientes() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Ciudad</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Las Palmas" data-testid="input-ciudad" />
-                      </FormControl>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Las Palmas" 
+                        data-testid="input-ciudad" 
+                      />
+                    </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -546,9 +631,14 @@ export default function Clientes() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Provincia</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="Las Palmas" data-testid="input-provincia" />
-                      </FormControl>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Las Palmas" 
+                        data-testid="input-provincia" 
+                      />
+                    </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -562,7 +652,12 @@ export default function Clientes() {
                   <FormItem>
                     <FormLabel>Notas</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Observaciones adicionales" data-testid="input-notas" />
+                      <Textarea 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Observaciones adicionales" 
+                        data-testid="input-notas" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -576,7 +671,7 @@ export default function Clientes() {
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
                       <Checkbox
-                        checked={field.value}
+                        checked={field.value || false}
                         onCheckedChange={field.onChange}
                         data-testid="checkbox-rgpd"
                       />

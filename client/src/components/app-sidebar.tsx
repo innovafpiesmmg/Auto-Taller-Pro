@@ -1,4 +1,5 @@
 import { 
+  BarChart2,
   Calendar,
   LayoutDashboard,
   Users,
@@ -97,6 +98,11 @@ const menuItems = [
     title: "Cobros & Caja",
     url: "/cobros",
     icon: Wallet,
+  },
+  {
+    title: "Informes & Estadísticas",
+    url: "/informes",
+    icon: BarChart2,
   },
 ];
 

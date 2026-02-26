@@ -8,7 +8,8 @@ import {
   Users,
   Car,
   Plus,
-  Clock
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -17,6 +18,19 @@ import type { Cita, OrdenReparacion, Cliente, Vehiculo } from "@shared/schema";
 import { format, startOfDay, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend
+} from "recharts";
 
 interface DashboardStats {
   ordenesAbiertas: number;
@@ -26,30 +40,36 @@ interface DashboardStats {
   totalClientes: number;
   totalVehiculos: number;
   ordenesDelMes: number;
+  ingresosMensuales: { mes: string; total: number }[];
+  articulosBajoStock: number;
 }
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats/dashboard"],
-    refetchInterval: 5000, // Actualizar cada 5 segundos
+    refetchInterval: 30000,
   });
 
   const { data: citas, isLoading: isLoadingCitas } = useQuery<Cita[]>({
     queryKey: ["/api/citas"],
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: ordenes, isLoading: isLoadingOrdenes } = useQuery<OrdenReparacion[]>({
     queryKey: ["/api/ordenes"],
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: clientes } = useQuery<Cliente[]>({
     queryKey: ["/api/clientes"],
+    refetchInterval: 30000,
   });
 
   const { data: vehiculos } = useQuery<Vehiculo[]>({
     queryKey: ["/api/vehiculos"],
+    refetchInterval: 30000,
   });
 
   const today = startOfDay(new Date());
@@ -77,6 +97,25 @@ export default function Dashboard() {
     }).format(value);
   };
 
+  const getEstadoData = () => {
+    if (!ordenes) return [];
+    const estados = {
+      abierta: 0,
+      en_curso: 0,
+      terminada: 0,
+      facturada: 0,
+    };
+    ordenes.forEach(o => {
+      if (o.estado in estados) {
+        estados[o.estado as keyof typeof estados]++;
+      }
+    });
+    return Object.entries(estados).map(([name, value]) => ({ 
+      name: name.replace('_', ' ').charAt(0).toUpperCase() + name.replace('_', ' ').slice(1), 
+      value 
+    }));
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -100,7 +139,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">OR Abiertas</CardTitle>
@@ -174,6 +213,85 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">
               Boxes ocupados
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 dark:border-red-900">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold text-red-600" data-testid="text-stock-bajo-kpi">
+                {stats?.articulosBajoStock || 0}
+              </div>
+            )}
+            <Button asChild variant="ghost" size="sm" className="h-auto p-0 text-xs text-red-600 hover:text-red-700">
+              <Link href="/articulos">Ver artículos</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingresos por mes (últimos 6 meses)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full" data-testid="chart-ingresos">
+              {isLoading ? (
+                <Skeleton className="h-full w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats?.ingresosMensuales || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="mes" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                    <Bar dataKey="total" fill="hsl(var(--primary))" name="Total Facturado" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Estado de Órdenes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full" data-testid="chart-estados">
+              {isLoadingOrdenes ? (
+                <Skeleton className="h-full w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={getEstadoData()}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {getEstadoData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

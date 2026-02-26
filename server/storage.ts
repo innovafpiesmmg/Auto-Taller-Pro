@@ -458,8 +458,41 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(ordenesReparacion).orderBy(desc(ordenesReparacion.createdAt));
   }
 
-  async getOrdenReparacion(id: number): Promise<OrdenReparacion | undefined> {
-    const [or] = await db.select().from(ordenesReparacion).where(eq(ordenesReparacion.id, id));
+  async getOrdenReparacion(id: number): Promise<OrdenReparacion & { 
+    clienteNombre?: string; 
+    clienteNif?: string;
+    vehiculoMatricula?: string;
+    vehiculoMarca?: string;
+    vehiculoModelo?: string;
+  } | undefined> {
+    const [or] = await db
+      .select({
+        id: ordenesReparacion.id,
+        codigo: ordenesReparacion.codigo,
+        clienteId: ordenesReparacion.clienteId,
+        vehiculoId: ordenesReparacion.vehiculoId,
+        citaId: ordenesReparacion.citaId,
+        fechaApertura: ordenesReparacion.fechaApertura,
+        fechaCierre: ordenesReparacion.fechaCierre,
+        estado: ordenesReparacion.estado,
+        prioridad: ordenesReparacion.prioridad,
+        kmEntrada: ordenesReparacion.kmEntrada,
+        kmSalida: ordenesReparacion.kmSalida,
+        observaciones: ordenesReparacion.observaciones,
+        checklistRecepcion: ordenesReparacion.checklistRecepcion,
+        firmaDigital: ordenesReparacion.firmaDigital,
+        createdAt: ordenesReparacion.createdAt,
+        updatedAt: ordenesReparacion.updatedAt,
+        clienteNombre: clientes.nombre,
+        clienteNif: clientes.nif,
+        vehiculoMatricula: vehiculos.matricula,
+        vehiculoMarca: vehiculos.marca,
+        vehiculoModelo: vehiculos.modelo,
+      })
+      .from(ordenesReparacion)
+      .leftJoin(clientes, eq(ordenesReparacion.clienteId, clientes.id))
+      .leftJoin(vehiculos, eq(ordenesReparacion.vehiculoId, vehiculos.id))
+      .where(eq(ordenesReparacion.id, id));
     return or || undefined;
   }
 

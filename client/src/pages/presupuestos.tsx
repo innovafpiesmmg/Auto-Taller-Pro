@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, FileText, Edit, Trash2 } from "lucide-react";
+import { Plus, FileText, Edit, Trash2, X, ClipboardList, Receipt } from "lucide-react";
+import { useLocation } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -51,20 +52,33 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { SelectPresupuesto, Cliente, Vehiculo } from "@shared/schema";
+import type { Presupuesto, Cliente, Vehiculo } from "@shared/schema";
 import { insertPresupuestoSchema } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
 
-type FormValues = z.infer<typeof insertPresupuestoSchema>;
+const presupuestoLineaSchema = z.object({
+  tipo: z.enum(['mano_obra', 'articulo', 'otros']),
+  descripcion: z.string().min(1, "Descripción requerida"),
+  cantidad: z.number().min(0.01, "Cantidad mínima 0.01"),
+  precioUnitario: z.number().min(0, "Precio no puede ser negativo"),
+  igic: z.number().default(7),
+});
+
+type PresupuestoLinea = z.infer<typeof presupuestoLineaSchema>;
+
+type FormValues = z.infer<typeof insertPresupuestoSchema> & {
+  lineasArray: PresupuestoLinea[];
+};
 
 export default function Presupuestos() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingPresupuesto, setEditingPresupuesto] = useState<SelectPresupuesto | null>(null);
+  const [editingPresupuesto, setEditingPresupuesto] = useState<Presupuesto | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
-  const { data: presupuestos, isLoading } = useQuery<SelectPresupuesto[]>({
+  const { data: presupuestos, isLoading } = useQuery<Presupuesto[]>({
     queryKey: ["/api/presupuestos"],
   });
 
@@ -94,31 +108,58 @@ export default function Presupuestos() {
     resolver: zodResolver(insertPresupuestoSchema.extend({
       clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
       vehiculoId: z.number().int().min(1, "Debe seleccionar un vehículo"),
+      lineasArray: z.array(presupuestoLineaSchema),
+      total: z.union([z.string(), z.number()]),
+      totalIgic: z.union([z.string(), z.number()]),
     })),
     defaultValues: {
       codigo: "",
       clienteId: undefined,
       vehiculoId: undefined,
       fecha: new Date(),
-      total: 0,
-      totalIgic: 0,
+      total: "0",
+      totalIgic: "0",
       aprobado: false,
       notas: "",
+      lineasArray: [],
     },
   });
 
-  const handleOpenDialog = (presupuesto?: SelectPresupuesto) => {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "lineasArray",
+  });
+
+  const lineasArray = form.watch("lineasArray");
+
+  useMemo(() => {
+    const subtotal = lineasArray.reduce((sum, linea) => sum + (linea.cantidad * linea.precioUnitario), 0);
+    const totalIgic = lineasArray.reduce((sum, linea) => sum + (linea.cantidad * linea.precioUnitario * (linea.igic / 100)), 0);
+    const total = subtotal + totalIgic;
+
+    form.setValue("total", total.toFixed(2));
+    form.setValue("totalIgic", totalIgic.toFixed(2));
+  }, [lineasArray, form]);
+
+  const handleOpenDialog = (presupuesto?: Presupuesto) => {
     if (presupuesto) {
       setEditingPresupuesto(presupuesto);
+      let parsedLineas = [];
+      try {
+        parsedLineas = JSON.parse(presupuesto.lineas || "[]");
+      } catch (e) {
+        console.error("Error parsing budget lines", e);
+      }
       form.reset({
         codigo: presupuesto.codigo,
         clienteId: presupuesto.clienteId,
         vehiculoId: presupuesto.vehiculoId,
         fecha: presupuesto.fecha ? new Date(presupuesto.fecha) : new Date(),
-        total: parseFloat(presupuesto.total.toString()),
-        totalIgic: parseFloat(presupuesto.totalIgic?.toString() || "0"),
+        total: presupuesto.total.toString(),
+        totalIgic: presupuesto.totalIgic?.toString() || "0",
         aprobado: presupuesto.aprobado || false,
         notas: presupuesto.notas || "",
+        lineasArray: parsedLineas,
       });
     } else {
       setEditingPresupuesto(null);
@@ -128,10 +169,11 @@ export default function Presupuestos() {
         clienteId: undefined,
         vehiculoId: undefined,
         fecha: new Date(),
-        total: 0,
-        totalIgic: 0,
+        total: "0",
+        totalIgic: "0",
         aprobado: false,
         notas: "",
+        lineasArray: [],
       });
     }
     setDialogOpen(true);
@@ -139,7 +181,7 @@ export default function Presupuestos() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/presupuestos", "POST", data);
+      return await apiRequest("/api/presupuestos", { method: "POST", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
@@ -161,7 +203,7 @@ export default function Presupuestos() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/presupuestos/${editingPresupuesto?.id}`, "PUT", data);
+      return await apiRequest(`/api/presupuestos/${editingPresupuesto?.id}`, { method: "PUT", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
@@ -184,7 +226,7 @@ export default function Presupuestos() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/presupuestos/${id}`, "DELETE");
+      return await apiRequest(`/api/presupuestos/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
@@ -204,10 +246,15 @@ export default function Presupuestos() {
   });
 
   const onSubmit = (data: FormValues) => {
+    const { lineasArray, ...rest } = data;
+    const finalData = {
+      ...rest,
+      lineas: JSON.stringify(lineasArray),
+    };
     if (editingPresupuesto) {
-      updateMutation.mutate(data);
+      updateMutation.mutate(finalData as any);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(finalData as any);
     }
   };
 
@@ -309,7 +356,7 @@ export default function Presupuestos() {
                         <FileText className="h-12 w-12 mb-2 opacity-50" />
                         <p>No hay presupuestos registrados</p>
                         <Button 
-                          variant="link" 
+                          variant="outline" 
                           className="mt-2" 
                           onClick={() => handleOpenDialog()}
                           data-testid="button-crear-primer-presupuesto"
@@ -341,6 +388,26 @@ export default function Presupuestos() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              title="Crear Orden de Reparación"
+                              onClick={() => setLocation(`/ordenes?clienteId=${presupuesto.clienteId}&vehiculoId=${presupuesto.vehiculoId}`)}
+                              data-testid={`button-crear-or-${presupuesto.id}`}
+                            >
+                              <ClipboardList className="h-4 w-4" />
+                            </Button>
+                            {presupuesto.aprobado && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                title="Crear Factura"
+                                onClick={() => setLocation(`/facturas?clienteId=${presupuesto.clienteId}`)}
+                                data-testid={`button-crear-factura-${presupuesto.id}`}
+                              >
+                                <Receipt className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -485,16 +552,17 @@ export default function Presupuestos() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Total (€)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="0.00"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          data-testid="input-total"
-                        />
-                      </FormControl>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="0.00"
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              data-testid="input-total"
+                            />
+                          </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -512,7 +580,8 @@ export default function Presupuestos() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value)}
                           data-testid="input-igic"
                         />
                       </FormControl>
@@ -532,6 +601,7 @@ export default function Presupuestos() {
                       <Textarea
                         placeholder="Notas adicionales"
                         {...field}
+                        value={field.value ?? ""}
                         data-testid="input-notas"
                       />
                     </FormControl>
@@ -539,6 +609,142 @@ export default function Presupuestos() {
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium">Líneas de Presupuesto</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ tipo: 'articulo', descripcion: '', cantidad: 1, precioUnitario: 0, igic: 7 })}
+                    data-testid="button-añadir-linea"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Añadir Línea
+                  </Button>
+                </div>
+
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[150px]">Tipo</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="w-[100px]">Cant.</TableHead>
+                        <TableHead className="w-[120px]">Precio (€)</TableHead>
+                        <TableHead className="w-[80px]">IGIC %</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.map((field, index) => (
+                        <TableRow key={field.id}>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineasArray.${index}.tipo`}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid={`select-tipo-linea-${index}`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="mano_obra">Mano de Obra</SelectItem>
+                                    <SelectItem value="articulo">Artículo</SelectItem>
+                                    <SelectItem value="otros">Otros</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineasArray.${index}.descripcion`}
+                              render={({ field }) => (
+                                <FormControl>
+                                  <Input {...field} placeholder="Descripción" data-testid={`input-descripcion-linea-${index}`} />
+                                </FormControl>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineasArray.${index}.cantidad`}
+                              render={({ field }) => (
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    {...field}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                    data-testid={`input-cantidad-linea-${index}`}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineasArray.${index}.precioUnitario`}
+                              render={({ field }) => (
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    {...field}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                    data-testid={`input-precio-linea-${index}`}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineasArray.${index}.igic`}
+                              render={({ field }) => (
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    {...field}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                    data-testid={`input-igic-linea-${index}`}
+                                  />
+                                </FormControl>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => remove(index)}
+                              data-testid={`button-eliminar-linea-${index}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {fields.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                            No hay líneas añadidas
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-3">
                 <Button 
