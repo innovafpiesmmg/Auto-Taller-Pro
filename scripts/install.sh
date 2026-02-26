@@ -145,10 +145,10 @@ else
   warn ".env ya existe, no se sobreescribe. Verifica DATABASE_URL manualmente."
 fi
 
-# ── 9. Instalar dependencias npm ──────────────────────────────────────────
+# ── 9. Instalar dependencias npm (todas, incl. devDependencies) ───────────
 info "Instalando dependencias npm (puede tardar unos minutos)..."
-sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm ci --omit=dev --silent" || \
-sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm install --omit=dev --silent"
+sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm ci --silent" || \
+sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm install --silent"
 log "Dependencias instaladas."
 
 # ── 10. Ejecutar migraciones de base de datos ─────────────────────────────
@@ -162,10 +162,12 @@ log "Migraciones aplicadas."
 
 # ── 11. Construir la aplicación ───────────────────────────────────────────
 info "Construyendo la aplicación (frontend + backend)..."
-# Necesitamos devDependencies para el build
-sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm install --silent"
 sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm run build"
 log "Build completado."
+
+# Limpiar devDependencies tras el build para reducir tamaño en disco
+info "Eliminando devDependencies (no necesarias en producción)..."
+sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm prune --omit=dev --silent" || true
 
 # ── 12. PM2: crear/actualizar ecosistema ─────────────────────────────────
 PM2_CONFIG="${APP_DIR}/ecosystem.config.cjs"
