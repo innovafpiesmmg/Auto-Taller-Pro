@@ -32,10 +32,11 @@ NODE_VERSION="20"
 
 DB_NAME="${DB_NAME:-autotaller_db}"
 DB_USER="${DB_USER:-autotaller_user}"
-# Genera contraseña y secretos aleatorios si no están definidos
-DB_PASS="${DB_PASS:-$(tr -dc 'A-Za-z0-9!#%&()*+,-./:;<=>?@[]^_{|}~' </dev/urandom | head -c 28)}"
-JWT_SECRET="${JWT_SECRET:-$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64)}"
-SESSION_SECRET="${SESSION_SECRET:-$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64)}"
+# Genera contraseña y secretos aleatorios usando openssl (evita SIGPIPE con set -o pipefail)
+_gen_secret() { openssl rand -hex "$1" 2>/dev/null || dd if=/dev/urandom bs="$1" count=1 2>/dev/null | od -A n -t x1 | tr -d ' \n'; }
+DB_PASS="${DB_PASS:-$(_gen_secret 16)}"
+JWT_SECRET="${JWT_SECRET:-$(_gen_secret 32)}"
+SESSION_SECRET="${SESSION_SECRET:-$(_gen_secret 32)}"
 
 # ── 1. Actualizar sistema e instalar herramientas base ─────────────────────
 info "Actualizando paquetes del sistema..."
