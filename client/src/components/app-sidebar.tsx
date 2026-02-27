@@ -170,7 +170,7 @@ export function AppSidebar() {
   return (
     <Sidebar data-testid="sidebar-main">
       <SidebarHeader className="p-6">
-        <div className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3 rounded-md p-1 -m-1 transition-opacity hover:opacity-80" data-testid="link-landing-logo">
           {logoUrl ? (
             <div className="flex h-10 w-10 items-center justify-center">
               <img
@@ -196,7 +196,7 @@ export function AppSidebar() {
             <h2 className="text-lg font-semibold" data-testid="text-nombre-empresa">{nombreEmpresa}</h2>
             <p className="text-xs text-muted-foreground">Sistema de Gestión</p>
           </div>
-        </div>
+        </a>
       </SidebarHeader>
 
       <SidebarContent>
