@@ -433,7 +433,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/ordenes", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
-      const validated = insertOrdenReparacionSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.fechaApertura) data.fechaApertura = new Date(data.fechaApertura);
+      if (data.fechaCierre) data.fechaCierre = new Date(data.fechaCierre);
+      const validated = insertOrdenReparacionSchema.parse(data);
       const orden = await storage.createOrdenReparacion(validated);
       res.status(201).json(orden);
     } catch (error: any) {

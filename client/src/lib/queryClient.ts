@@ -12,7 +12,7 @@ export async function apiRequest(
   url: string,
   options?: {
     method?: string;
-    body?: string;
+    body?: any;
     headers?: HeadersInit;
   }
 ): Promise<any> {
@@ -21,14 +21,16 @@ export async function apiRequest(
     ...options?.headers,
   };
 
-  if (options?.body) {
+  let bodyStr: string | undefined;
+  if (options?.body !== undefined) {
+    bodyStr = typeof options.body === "string" ? options.body : JSON.stringify(options.body);
     headers["Content-Type"] = "application/json";
   }
 
   const res = await fetch(url, {
     method: options?.method || "GET",
     headers,
-    body: options?.body,
+    body: bodyStr,
     credentials: "include",
   });
 

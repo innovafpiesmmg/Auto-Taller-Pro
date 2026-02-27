@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CamaraFotos } from "@/components/camara-fotos";
 import { Plus, ClipboardList, Calendar, Edit, Trash2, Search, Download } from "lucide-react";
 import {
   Dialog,
@@ -78,6 +80,7 @@ export default function Ordenes() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOrden, setEditingOrden] = useState<OrdenReparacion | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [fotos, setFotos] = useState<string[]>([]);
   const { toast } = useToast();
 
   const { data: ordenes, isLoading } = useQuery<OrdenReparacion[]>({
@@ -140,6 +143,9 @@ export default function Ordenes() {
         estado: orden.estado,
         observaciones: orden.observaciones || "",
       });
+      try {
+        setFotos(JSON.parse((orden as any).fotosRecepcion || "[]"));
+      } catch { setFotos([]); }
     } else {
       setEditingOrden(null);
       const newCodigo = `OR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -152,6 +158,7 @@ export default function Ordenes() {
         estado: "abierta",
         observaciones: "",
       });
+      setFotos([]);
     }
     setDialogOpen(true);
   };
@@ -233,10 +240,11 @@ export default function Ordenes() {
   };
 
   const onSubmit = (data: FormValues) => {
+    const payload = { ...data, fotosRecepcion: JSON.stringify(fotos) };
     if (editingOrden) {
-      updateMutation.mutate(data);
+      updateMutation.mutate(payload as FormValues);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(payload as FormValues);
     }
   };
 
@@ -402,8 +410,8 @@ export default function Ordenes() {
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-orden">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[92vh] flex flex-col p-0" data-testid="dialog-orden">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>{editingOrden ? "Editar Orden de Reparación" : "Nueva Orden de Reparación"}</DialogTitle>
             <DialogDescription>
               {editingOrden ? "Modifica los datos de la orden" : "Completa el formulario para crear una nueva orden"}
@@ -411,7 +419,9 @@ export default function Ordenes() {
           </DialogHeader>
           
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
+              <ScrollArea className="flex-1 px-6">
+                <div className="space-y-4 pb-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -577,7 +587,11 @@ export default function Ordenes() {
                 )}
               />
 
-              <div className="flex justify-end gap-3">
+                <CamaraFotos fotos={fotos} onFotosChange={setFotos} />
+                </div>
+              </ScrollArea>
+
+              <div className="flex justify-end gap-3 px-6 py-4 border-t shrink-0">
                 <Button 
                   type="button" 
                   variant="outline" 
