@@ -20,6 +20,7 @@ import {
   CheckCircle
 } from "lucide-react";
 import { RecepcionChecklist } from "@/components/recepcion-checklist";
+import { CamaraFotos } from "@/components/camara-fotos";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -177,6 +178,10 @@ export default function OrdenDetalle() {
     });
   };
 
+  const handleSaveFotos = (fotos: string[]) => {
+    updateOrdenMutation.mutate({ fotosRecepcion: JSON.stringify(fotos) });
+  };
+
   const handleCreateFactura = () => {
     navigate(`/facturas?orId=${id}&clienteId=${orden?.clienteId}`);
   };
@@ -201,6 +206,11 @@ export default function OrdenDetalle() {
   const checklist: ChecklistItem[] = orden.checklistRecepcion 
     ? JSON.parse(orden.checklistRecepcion) 
     : undefined;
+
+  const fotosRecepcion: string[] = (() => {
+    try { return JSON.parse((orden as any).fotosRecepcion || "[]"); }
+    catch { return []; }
+  })();
 
   const totalMO = partes?.reduce((sum, p) => sum + (Number(p.precioMO || 0) * Number(p.tiempoEstimado || 0)), 0) || 0;
   const totalArticulos = consumos?.reduce((sum, c) => sum + (Number(c.precioUnitario || 0) * Number(c.cantidad || 0)), 0) || 0;
@@ -345,6 +355,11 @@ export default function OrdenDetalle() {
           </CardContent>
         </Card>
       </div>
+
+      <CamaraFotos
+        fotos={fotosRecepcion}
+        onFotosChange={handleSaveFotos}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

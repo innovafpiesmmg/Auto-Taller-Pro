@@ -131,6 +131,7 @@ export const ordenesReparacion = pgTable("ordenes_reparacion", {
   observaciones: text("observaciones"),
   checklistRecepcion: text("checklist_recepcion"),
   firmaDigital: text("firma_digital"),
+  fotosRecepcion: text("fotos_recepcion"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
