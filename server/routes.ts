@@ -62,8 +62,6 @@ const registerSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Middleware para parsear JSON
-  app.use(express.json());
 
   // Auth middleware
   const authenticateToken = (req: any, res: any, next: any) => {
@@ -375,7 +373,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/citas", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
-      const validated = insertCitaSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.fechaHora && typeof data.fechaHora === 'string') data.fechaHora = new Date(data.fechaHora);
+      const validated = insertCitaSchema.parse(data);
       const cita = await storage.createCita(validated);
       res.status(201).json(cita);
     } catch (error: any) {
@@ -386,7 +386,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/citas/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validated = insertCitaSchema.partial().parse(req.body);
+      const data = { ...req.body };
+      if (data.fechaHora && typeof data.fechaHora === 'string') data.fechaHora = new Date(data.fechaHora);
+      const validated = insertCitaSchema.partial().parse(data);
       const cita = await storage.updateCita(id, validated);
       if (!cita) {
         return res.status(404).json({ error: "Cita no encontrada" });
@@ -670,6 +672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/facturas", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const { lineas, ...facturaData } = req.body;
+      if (facturaData.fecha && typeof facturaData.fecha === 'string') facturaData.fecha = new Date(facturaData.fecha);
       const validatedFactura = insertFacturaSchema.parse(facturaData);
       const factura = await storage.createFactura(validatedFactura);
       
@@ -690,7 +693,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/facturas/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validated = insertFacturaSchema.partial().parse(req.body);
+      const data = { ...req.body };
+      if (data.fecha && typeof data.fecha === 'string') data.fecha = new Date(data.fecha);
+      const validated = insertFacturaSchema.partial().parse(data);
       const factura = await storage.updateFactura(id, validated);
       if (!factura) {
         return res.status(404).json({ error: "Factura no encontrada" });
@@ -724,7 +729,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/cobros", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
-      const validated = insertCobroSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.fecha && typeof data.fecha === 'string') data.fecha = new Date(data.fecha);
+      const validated = insertCobroSchema.parse(data);
       const cobro = await storage.createCobro(validated);
       res.status(201).json(cobro);
     } catch (error: any) {
@@ -735,7 +742,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/cobros/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validated = insertCobroSchema.partial().parse(req.body);
+      const data = { ...req.body };
+      if (data.fecha && typeof data.fecha === 'string') data.fecha = new Date(data.fecha);
+      const validated = insertCobroSchema.partial().parse(data);
       const cobro = await storage.updateCobro(id, validated);
       if (!cobro) {
         return res.status(404).json({ error: "Cobro no encontrado" });
@@ -1170,7 +1179,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/campanas", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
     try {
-      const validated = insertCampanaSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.fechaInicio && typeof data.fechaInicio === 'string') data.fechaInicio = new Date(data.fechaInicio);
+      if (data.fechaFin && typeof data.fechaFin === 'string') data.fechaFin = new Date(data.fechaFin);
+      const validated = insertCampanaSchema.parse(data);
       const campana = await storage.createCampana(validated);
       res.status(201).json(campana);
     } catch (error: any) {
@@ -1181,7 +1193,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/campanas/:id", authenticateToken, requireRole("admin", "jefe_taller"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validated = insertCampanaSchema.partial().parse(req.body);
+      const data = { ...req.body };
+      if (data.fechaInicio && typeof data.fechaInicio === 'string') data.fechaInicio = new Date(data.fechaInicio);
+      if (data.fechaFin && typeof data.fechaFin === 'string') data.fechaFin = new Date(data.fechaFin);
+      const validated = insertCampanaSchema.partial().parse(data);
       const campana = await storage.updateCampana(id, validated);
       if (!campana) {
         return res.status(404).json({ error: "Campaña no encontrada" });
