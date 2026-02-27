@@ -74,7 +74,9 @@ The system uses a modern full-stack architecture. The frontend is built with **R
 - API requests handle `204 No Content` gracefully.
 - Password management in user editing allows optional updates.
 - Drizzle decimal fields map to `string` in TypeScript — use parseFloat() for arithmetic.
-- Sidebar auto-collapses on viewports < 1280px for tablet/mobile.
+- Sidebar auto-collapses on viewports < 1024px (opens by default on tablet landscape and desktop).
+- **Tablet/Touch optimizations**: `touch-action: manipulation` globally (removes 300ms tap delay); `@media (pointer: coarse)` raises tap targets to 44px min-height; table rows padded for finger touch; action icon buttons (`size="icon"`) in tables; sidebar menu items padded to `py-3` on md+; base font 15px on tablet.
+- Sidebar width set to 17rem with icon-mode at 3.5rem.
 - Responsive tables with `overflow-x-auto` and hidden columns on small screens.
 
 ## External Dependencies

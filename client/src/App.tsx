@@ -61,18 +61,18 @@ function ProtectedRouter() {
   }
 
   const sidebarStyle = {
-    "--sidebar-width": "18rem",
+    "--sidebar-width": "17rem",
     "--sidebar-width-icon": "3.5rem",
   } as React.CSSProperties;
 
-  const defaultOpen = typeof window !== "undefined" && window.innerWidth >= 1280;
+  const defaultOpen = typeof window !== "undefined" && window.innerWidth >= 1024;
 
   return (
     <SidebarProvider style={sidebarStyle} defaultOpen={defaultOpen}>
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-          <header className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-3 border-b bg-background shrink-0">
+          <header className="flex items-center gap-2 px-3 py-2 md:py-3 lg:px-4 lg:py-3 border-b bg-background shrink-0">
             <SidebarTrigger data-testid="button-sidebar-toggle" className="shrink-0" />
             <div className="flex-1 flex justify-center min-w-0">
               <GlobalSearch />

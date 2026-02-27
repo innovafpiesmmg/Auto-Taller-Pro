@@ -355,6 +355,56 @@
   }
 }
 
+/* =============================================
+   TABLET & TOUCH DEVICE ADAPTATIONS
+   Optimizado para uso en taller con tablets
+   ============================================= */
+
+/* Elimina el delay de 300ms de clic en dispositivos táctiles */
+a, button, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+}
+
+/* Detecta dispositivos táctiles (pointer:coarse = dedos, no ratón) */
+@media (pointer: coarse) {
+  /* Aumentar targets táctiles mínimos a 44px */
+  button, [role="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+  }
+
+  /* Filas de tabla más altas para facilitar el toque */
+  tbody tr td {
+    padding-top: 0.85rem !important;
+    padding-bottom: 0.85rem !important;
+  }
+
+  /* Inputs más altos para dedos */
+  input[type="text"], input[type="email"], input[type="number"],
+  input[type="tel"], input[type="search"], input[type="password"],
+  input[type="date"], textarea, select {
+    min-height: 44px;
+  }
+
+  /* Evitar selección accidental de texto al tocar rápido */
+  button, [role="button"] {
+    user-select: none;
+  }
+}
+
+/* Tablet portrait y landscape (768px - 1280px) */
+@media (min-width: 768px) and (max-width: 1280px) {
+  /* Texto base ligeramente mayor para leer desde la distancia del taller */
+  body {
+    font-size: 15px;
+  }
+
+  /* Cabecera más generosa en tablet */
+  .tablet-header-lg {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+  }
+}
+
 @media print {
   .print-hide {
     display: none !important;

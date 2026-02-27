@@ -137,11 +137,13 @@ function CollapsibleSection({ label, items, location, defaultOpen = true, testId
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url}
+                    size="default"
                     data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="py-2.5 md:py-3"
                   >
                     <Link href={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="text-sm">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

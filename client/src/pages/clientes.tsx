@@ -361,23 +361,27 @@ export default function Clientes() {
                       <TableCell data-testid={`text-telefono-${cliente.id}`}>
                         {cliente.movil || cliente.telefono || '-'}
                       </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleOpenDialog(cliente)}
-                          data-testid={`button-editar-${cliente.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setDeleteId(cliente.id)}
-                          data-testid={`button-eliminar-${cliente.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleOpenDialog(cliente)}
+                            data-testid={`button-editar-${cliente.id}`}
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => setDeleteId(cliente.id)}
+                            data-testid={`button-eliminar-${cliente.id}`}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

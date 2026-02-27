@@ -553,23 +553,27 @@ export default function Vehiculos() {
                         )}
                       </TableCell>
                       <TableCell>{vehiculo.km ? `${vehiculo.km} km` : "-"}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleOpenDialog(vehiculo)}
-                          data-testid={`button-editar-${vehiculo.id}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setDeleteId(vehiculo.id)}
-                          data-testid={`button-eliminar-${vehiculo.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleOpenDialog(vehiculo)}
+                            data-testid={`button-editar-${vehiculo.id}`}
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => setDeleteId(vehiculo.id)}
+                            data-testid={`button-eliminar-${vehiculo.id}`}
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
