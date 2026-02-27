@@ -347,25 +347,18 @@ export default function Landing() {
       </section>
 
       {/* ── PIE DE PÁGINA ── */}
-      <footer className="border-t bg-card px-6 py-8">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 text-center sm:text-left max-w-sm">
-            <GraduationCap className="h-5 w-5 shrink-0 text-primary" />
+      <footer className="border-t bg-card px-6 py-3">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
             <span>
-              Software promovido por el{" "}
-              <strong className="text-foreground">
-                Departamento de Administración de Empresas
-              </strong>{" "}
-              del IES Manuel Martín González
+              Promovido por el <strong className="text-foreground">Dpto. de Administración de Empresas</strong> del IES Manuel Martín González
             </span>
           </div>
-          <div className="flex items-center gap-2 text-center sm:text-right max-w-sm">
-            <img src={asdLogo} alt="ASD" className="h-6 w-auto shrink-0" />
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <img src={asdLogo} alt="ASD" className="h-5 w-auto shrink-0" />
             <span>
-              Software desarrollado por{" "}
-              <strong className="text-foreground">
-                Atreyu Servicios Digitales
-              </strong>
+              Desarrollado por <strong className="text-foreground">Atreyu Servicios Digitales</strong>
             </span>
           </div>
         </div>
