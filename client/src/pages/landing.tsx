@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useAuth } from "@/lib/auth";
 import asdLogo from "@assets/ASD_1772120752929.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,6 +75,10 @@ const highlights = [
 ];
 
 export default function Landing() {
+  const { isAuthenticated, user } = useAuth();
+  const destino = isAuthenticated ? "/dashboard" : "/login";
+  const nombreUsuario = user?.nombre || "usuario";
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
 
@@ -94,8 +99,8 @@ export default function Landing() {
             Uso Educativo
           </Badge>
           <Button asChild size="sm" data-testid="button-acceder-nav">
-            <Link href="/login">
-              Acceder
+            <Link href={destino}>
+              {isAuthenticated ? `Seguir como ${nombreUsuario}` : "Acceder"}
               <ChevronRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
@@ -139,8 +144,8 @@ export default function Landing() {
               className="text-base px-8"
               data-testid="button-acceder-hero"
             >
-              <Link href="/login">
-                Acceder a la Plataforma
+              <Link href={destino}>
+                {isAuthenticated ? `Continuar como ${nombreUsuario}` : "Acceder a la Plataforma"}
                 <ChevronRight className="h-5 w-5 ml-2" />
               </Link>
             </Button>
@@ -241,8 +246,8 @@ export default function Landing() {
               ))}
             </ul>
             <Button asChild size="lg" data-testid="button-acceder-section">
-              <Link href="/login">
-                Comenzar ahora
+              <Link href={destino}>
+                {isAuthenticated ? "Ir al Panel" : "Comenzar ahora"}
                 <ChevronRight className="h-5 w-5 ml-1" />
               </Link>
             </Button>
@@ -338,8 +343,8 @@ export default function Landing() {
             className="text-base px-10 bg-white/15 border-white/40 text-white"
             data-testid="button-acceder-cta"
           >
-            <Link href="/login">
-              Acceder a la Plataforma
+            <Link href={destino}>
+              {isAuthenticated ? `Volver al Panel` : "Acceder a la Plataforma"}
               <ChevronRight className="h-5 w-5 ml-2" />
             </Link>
           </Button>

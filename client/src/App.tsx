@@ -50,7 +50,7 @@ function ProtectedRouter() {
     const publicRoutes = ["/", "/login"];
     if (!isAuthenticated && !publicRoutes.includes(location)) {
       setLocation("/login");
-    } else if (isAuthenticated && location === "/login") {
+    } else if (isAuthenticated && (location === "/login" || location === "/")) {
       setLocation("/dashboard");
     }
   }, [isAuthenticated, location, setLocation]);
@@ -59,8 +59,6 @@ function ProtectedRouter() {
     if (location === "/") return <Landing />;
     return <Login />;
   }
-
-  if (location === "/") return <Landing />;
 
   const sidebarStyle = {
     "--sidebar-width": "17rem",
