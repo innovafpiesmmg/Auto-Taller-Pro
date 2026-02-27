@@ -481,6 +481,7 @@ export class DatabaseStorage implements IStorage {
         observaciones: ordenesReparacion.observaciones,
         checklistRecepcion: ordenesReparacion.checklistRecepcion,
         firmaDigital: ordenesReparacion.firmaDigital,
+        fotosRecepcion: ordenesReparacion.fotosRecepcion,
         createdAt: ordenesReparacion.createdAt,
         updatedAt: ordenesReparacion.updatedAt,
         clienteNombre: clientes.nombre,
