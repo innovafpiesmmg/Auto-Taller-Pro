@@ -96,6 +96,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export interface IStorage {
   // Users
@@ -461,10 +462,14 @@ export class DatabaseStorage implements IStorage {
   async getOrdenReparacion(id: number): Promise<OrdenReparacion & { 
     clienteNombre?: string; 
     clienteNif?: string;
+    clienteTelefono?: string;
     vehiculoMatricula?: string;
     vehiculoMarca?: string;
     vehiculoModelo?: string;
+    vehiculoAnio?: number;
+    recepcionadoPorNombre?: string;
   } | undefined> {
+    const recepcionistas = alias(users, "recepcionistas");
     const [or] = await db
       .select({
         id: ordenesReparacion.id,
@@ -479,6 +484,7 @@ export class DatabaseStorage implements IStorage {
         kmEntrada: ordenesReparacion.kmEntrada,
         kmSalida: ordenesReparacion.kmSalida,
         observaciones: ordenesReparacion.observaciones,
+        recepcionadoPorId: ordenesReparacion.recepcionadoPorId,
         checklistRecepcion: ordenesReparacion.checklistRecepcion,
         firmaDigital: ordenesReparacion.firmaDigital,
         fotosRecepcion: ordenesReparacion.fotosRecepcion,
@@ -486,13 +492,17 @@ export class DatabaseStorage implements IStorage {
         updatedAt: ordenesReparacion.updatedAt,
         clienteNombre: clientes.nombre,
         clienteNif: clientes.nif,
+        clienteTelefono: clientes.telefono,
         vehiculoMatricula: vehiculos.matricula,
         vehiculoMarca: vehiculos.marca,
         vehiculoModelo: vehiculos.modelo,
+        vehiculoAnio: vehiculos.anio,
+        recepcionadoPorNombre: recepcionistas.nombre,
       })
       .from(ordenesReparacion)
       .leftJoin(clientes, eq(ordenesReparacion.clienteId, clientes.id))
       .leftJoin(vehiculos, eq(ordenesReparacion.vehiculoId, vehiculos.id))
+      .leftJoin(recepcionistas, eq(ordenesReparacion.recepcionadoPorId, recepcionistas.id))
       .where(eq(ordenesReparacion.id, id));
     return or || undefined;
   }

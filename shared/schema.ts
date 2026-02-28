@@ -129,6 +129,7 @@ export const ordenesReparacion = pgTable("ordenes_reparacion", {
   kmEntrada: integer("km_entrada"),
   kmSalida: integer("km_salida"),
   observaciones: text("observaciones"),
+  recepcionadoPorId: integer("recepcionado_por_id").references(() => users.id),
   checklistRecepcion: text("checklist_recepcion"),
   firmaDigital: text("firma_digital"),
   fotosRecepcion: text("fotos_recepcion"),
