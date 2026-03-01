@@ -96,7 +96,6 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql, like, or } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 
 export interface IStorage {
   // Users
@@ -469,7 +468,6 @@ export class DatabaseStorage implements IStorage {
     vehiculoAnio?: number;
     recepcionadoPorNombre?: string;
   } | undefined> {
-    const recepcionistas = alias(users, "recepcionistas");
     const [or] = await db
       .select({
         id: ordenesReparacion.id,
@@ -497,12 +495,11 @@ export class DatabaseStorage implements IStorage {
         vehiculoMarca: vehiculos.marca,
         vehiculoModelo: vehiculos.modelo,
         vehiculoAnio: vehiculos.anio,
-        recepcionadoPorNombre: recepcionistas.nombre,
+        recepcionadoPorNombre: sql<string>`(SELECT nombre FROM users WHERE id = ${ordenesReparacion.recepcionadoPorId})`,
       })
       .from(ordenesReparacion)
       .leftJoin(clientes, eq(ordenesReparacion.clienteId, clientes.id))
       .leftJoin(vehiculos, eq(ordenesReparacion.vehiculoId, vehiculos.id))
-      .leftJoin(recepcionistas, eq(ordenesReparacion.recepcionadoPorId, recepcionistas.id))
       .where(eq(ordenesReparacion.id, id));
     return or || undefined;
   }
