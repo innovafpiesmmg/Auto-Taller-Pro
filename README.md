@@ -276,6 +276,95 @@ sudo -u autotaller pm2 reload autotaller
 
 ---
 
+---
+
+## Gestión de aulas (uso educativo multitaller)
+
+Cada docente o grupo puede tener su propio taller completamente independiente en el mismo servidor, con su propia base de datos, puerto y proceso PM2.
+
+### Crear un aula nueva
+
+```bash
+sudo bash /opt/autotaller/scripts/nuevo-aula.sh <nombre-aula> [subdominio.dominio.com]
+```
+
+**Ejemplos:**
+
+```bash
+# Aula sin dominio público (acceso por IP:puerto)
+sudo bash /opt/autotaller/scripts/nuevo-aula.sh daw2024
+
+# Aula con subdominio de Cloudflare
+sudo bash /opt/autotaller/scripts/nuevo-aula.sh grupo-b aula-b.taller.midominio.com
+```
+
+El script realiza automáticamente:
+
+| Paso | Acción |
+|------|--------|
+| 1 | Crea base de datos y usuario PostgreSQL exclusivos |
+| 2 | Clona el repositorio en `/opt/autotaller-{nombre}` |
+| 3 | Genera `.env` con puerto libre y secretos aleatorios |
+| 4 | Instala dependencias y aplica migraciones Drizzle |
+| 5 | Crea el usuario `admin` del aula |
+| 6 | Construye la aplicación (frontend + backend) |
+| 7 | Registra y arranca el proceso en PM2 |
+| 8 | Abre el puerto asignado en UFW |
+| 9 | Añade la ruta en Cloudflare Tunnel (si ya está configurado) |
+
+Al finalizar muestra el puerto asignado, las credenciales y las instrucciones de Cloudflare.
+
+### Ver todas las aulas activas
+
+```bash
+pm2 list
+```
+
+### Gestionar un aula
+
+```bash
+pm2 logs autotaller-daw2024      # Ver logs en tiempo real
+pm2 restart autotaller-daw2024   # Reiniciar
+pm2 stop autotaller-daw2024      # Detener
+pm2 delete autotaller-daw2024    # Eliminar del PM2
+```
+
+### Actualizar un aula específica
+
+```bash
+APP_DIR='/opt/autotaller-daw2024' sudo bash /opt/autotaller/scripts/update.sh
+```
+
+### Eliminar un aula por completo
+
+```bash
+pm2 delete autotaller-daw2024 && pm2 save
+sudo -u postgres psql -c "DROP DATABASE autotaller_daw2024;"
+sudo -u postgres psql -c "DROP USER at_daw2024_u;"
+rm -rf /opt/autotaller-daw2024
+ufw delete allow 3001/tcp   # sustituir por el puerto que se asignó
+```
+
+### Configurar Cloudflare para un aula (si el túnel ya está activo)
+
+Edita `/etc/cloudflared/config.yml` y añade la ruta antes de la línea `- service: http_status:404`:
+
+```yaml
+ingress:
+  - hostname: daw2024.taller.midominio.com
+    service: http://localhost:3001
+  - hostname: grupob.taller.midominio.com
+    service: http://localhost:3002
+  - service: http_status:404
+```
+
+Luego reinicia y crea el DNS:
+
+```bash
+sudo systemctl restart cloudflared
+cloudflared tunnel route dns <nombre-tunnel> daw2024.taller.midominio.com
+```
+
 ## Copias de seguridad
 
 ### Copia manual
@@ -403,10 +492,12 @@ Auto-Taller-Pro/
 ├── shared/
 │   └── schema.ts              # Modelos de datos compartidos
 ├── scripts/
-│   ├── install.sh             # Instalación desatendida
-│   ├── update.sh              # Actualización
-│   ├── backup-db.sh           # Copia de seguridad
-│   └── restore-db.sh          # Restauración
+│   ├── install.sh             # Instalación desatendida en Ubuntu
+│   ├── update.sh              # Actualización (git pull + build + pm2 reload)
+│   ├── nuevo-aula.sh          # Crear nueva instancia independiente para un aula
+│   ├── setup-cloudflare.sh    # Configurar Cloudflare Tunnel con dominio propio
+│   ├── backup-db.sh           # Copia de seguridad de la base de datos
+│   └── restore-db.sh          # Restauración de copia de seguridad
 ├── ecosystem.config.cjs       # Configuración PM2 (generado por install.sh)
 └── README.md                  # Este archivo
 ```
