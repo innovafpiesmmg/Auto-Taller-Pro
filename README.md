@@ -178,16 +178,101 @@ pm2 reload autotaller --update-env  # Recargar sin tiempo muerto
 
 ### Actualizar a la última versión
 
+El proceso completo de actualización se realiza con un único comando:
+
 ```bash
 sudo bash /opt/autotaller/scripts/update.sh
 ```
 
-El script de actualización:
-1. Descarga los últimos cambios de GitHub
-2. Actualiza las dependencias npm
-3. Aplica nuevas migraciones de base de datos
-4. Reconstruye la aplicación
-5. Reinicia PM2 sin tiempo de inactividad
+El script ejecuta automáticamente los siguientes pasos:
+
+| Paso | Acción | Descripción |
+|------|--------|-------------|
+| 1 | Copia de seguridad del `.env` | Guarda una copia fechada del archivo de configuración antes de cualquier cambio |
+| 2 | `git pull` | Descarga los últimos cambios del repositorio de GitHub |
+| 3 | `npm install` | Instala o actualiza las dependencias de Node.js |
+| 4 | `drizzle-kit push` | Aplica los cambios de esquema a la base de datos (nuevas columnas, tablas, etc.) sin borrar datos |
+| 5 | `npm run build` | Reconstruye el frontend y el backend |
+| 6 | `pm2 reload` | Reinicia la aplicación sin tiempo de inactividad (`zero-downtime reload`) |
+
+> El tiempo total de actualización es aproximadamente 2-3 minutos. Durante el build la aplicación sigue respondiendo.
+
+#### Verificar que la actualización se aplicó correctamente
+
+```bash
+# Ver estado del proceso
+pm2 status autotaller
+
+# Ver los últimos logs para detectar errores
+pm2 logs autotaller --lines 50
+
+# Comprobar la versión del código actualizada
+git -C /opt/autotaller log --oneline -5
+```
+
+#### Actualización manual paso a paso (si el script falla)
+
+Si el script automático falla, puedes ejecutar los pasos manualmente como el usuario `autotaller`:
+
+```bash
+# 1. Ir al directorio de la aplicación
+cd /opt/autotaller
+
+# 2. Descargar cambios de GitHub
+sudo -u autotaller git pull origin main
+
+# 3. Actualizar dependencias
+sudo -u autotaller npm install
+
+# 4. Aplicar migraciones de base de datos
+sudo -u autotaller bash -c "set -a; source .env; set +a; npx drizzle-kit push"
+
+# 5. Reconstruir la aplicación
+sudo -u autotaller npm run build
+
+# 6. Reiniciar la aplicación
+sudo -u autotaller bash -c "set -a; source .env; set +a; pm2 reload autotaller --update-env && pm2 save"
+```
+
+#### Solución de problemas en la actualización
+
+**Error: `git pull` falla por cambios locales**
+```bash
+# Guardar los cambios locales y forzar la actualización
+cd /opt/autotaller
+sudo -u autotaller git stash
+sudo -u autotaller git pull origin main
+```
+
+**Error: `drizzle-kit push` falla**
+```bash
+# Verificar la conexión a la base de datos
+cd /opt/autotaller
+sudo -u autotaller bash -c "set -a; source .env; set +a; psql \$DATABASE_URL -c 'SELECT version();'"
+```
+
+**Error: la aplicación no arranca tras la actualización**
+```bash
+# Ver logs detallados
+pm2 logs autotaller --lines 100
+
+# Reiniciar completamente
+pm2 delete autotaller
+cd /opt/autotaller
+sudo -u autotaller bash -c "set -a; source .env; set +a; pm2 start ecosystem.config.js && pm2 save"
+```
+
+**Revertir a la versión anterior**
+```bash
+# Ver los últimos commits disponibles
+git -C /opt/autotaller log --oneline -10
+
+# Volver al commit anterior (sustituir HASH por el identificador del commit)
+cd /opt/autotaller
+sudo -u autotaller git checkout HASH
+sudo -u autotaller npm run build
+sudo -u autotaller pm2 reload autotaller
+```
 
 ---
 
