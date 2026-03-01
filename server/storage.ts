@@ -494,7 +494,7 @@ export class DatabaseStorage implements IStorage {
         vehiculoMatricula: vehiculos.matricula,
         vehiculoMarca: vehiculos.marca,
         vehiculoModelo: vehiculos.modelo,
-        vehiculoAnio: vehiculos.anio,
+        vehiculoAnio: vehiculos.año,
         recepcionadoPorNombre: sql<string>`(SELECT nombre FROM users WHERE id = ${ordenesReparacion.recepcionadoPorId})`,
       })
       .from(ordenesReparacion)
