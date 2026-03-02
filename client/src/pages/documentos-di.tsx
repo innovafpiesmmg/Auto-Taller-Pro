@@ -150,7 +150,7 @@ export default function DocumentosDI() {
     form.setValue("numero", documento.numero);
     form.setValue("gestorId", documento.gestorId);
     form.setValue("fechaEmision", new Date(documento.fechaEmision));
-    form.setValue("fechaRecogida", new Date(documento.fechaRecogida));
+    form.setValue("fechaRecogida", (documento.fechaRecogida ? new Date(documento.fechaRecogida) : new Date()) as Date);
     form.setValue("estado", documento.estado);
     form.setValue("transportistaRazonSocial", documento.transportistaRazonSocial || "");
     form.setValue("transportistaMatricula", documento.transportistaMatricula || "");
@@ -466,7 +466,7 @@ export default function DocumentosDI() {
                     {format(new Date(documento.fechaEmision), "dd/MM/yyyy")}
                   </TableCell>
                   <TableCell data-testid={`text-fecha-recogida-${documento.id}`}>
-                    {format(new Date(documento.fechaRecogida), "dd/MM/yyyy")}
+                    {documento.fechaRecogida ? format(new Date(documento.fechaRecogida), "dd/MM/yyyy") : "-"}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getEstadoBadge(documento.estado)} data-testid={`badge-estado-${documento.id}`}>

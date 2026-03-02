@@ -473,7 +473,7 @@ export default function OrdenDetalle() {
                 <FormField control={parteForm.control} name="mecanicoId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Mecánico</FormLabel>
-                    <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value?.toString()}>
+                    <Select onValueChange={(val) => field.onChange(parseInt(val))} value={field.value != null ? String(field.value) : ""}>
                       <FormControl>
                         <SelectTrigger data-testid="select-parte-mecanico">
                           <SelectValue placeholder="Seleccionar" />
@@ -568,7 +568,7 @@ export default function OrdenDetalle() {
                           consumoForm.setValue("igic", art.igic?.toString() || "7.00");
                         }
                       }}
-                      value={field.value?.toString()}
+                      value={field.value != null ? String(field.value) : ""}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-consumo-articulo">

@@ -16,9 +16,9 @@ export async function apiRequest(
     headers?: HeadersInit;
   }
 ): Promise<any> {
-  const headers: HeadersInit = {
-    ...getAuthHeaders(),
-    ...options?.headers,
+  const headers: Record<string, string> = {
+    ...(getAuthHeaders() as Record<string, string>),
+    ...(options?.headers as Record<string, string> | undefined),
   };
 
   let bodyStr: string | undefined;

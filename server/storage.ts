@@ -836,7 +836,7 @@ export class DatabaseStorage implements IStorage {
   // CRM Postventa - Campañas
   async getCampanas(estado?: string): Promise<Campana[]> {
     if (estado) {
-      return await db.select().from(campanas).where(eq(campanas.estado, estado)).orderBy(desc(campanas.createdAt));
+      return await db.select().from(campanas).where(eq(campanas.estado, estado as any)).orderBy(desc(campanas.createdAt));
     }
     return await db.select().from(campanas).orderBy(desc(campanas.createdAt));
   }
@@ -917,7 +917,7 @@ export class DatabaseStorage implements IStorage {
   async getCupones(clienteId?: number, estado?: string): Promise<Cupon[]> {
     const conditions = [];
     if (clienteId) conditions.push(eq(cupones.clienteId, clienteId));
-    if (estado) conditions.push(eq(cupones.estado, estado));
+    if (estado) conditions.push(eq(cupones.estado, estado as any));
     
     if (conditions.length > 0) {
       return await db.select().from(cupones).where(and(...conditions)).orderBy(desc(cupones.createdAt));

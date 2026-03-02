@@ -86,7 +86,7 @@ export function FacturaPrint({ factura, cliente, empresa, open, onOpenChange }: 
             </thead>
             <tbody>
               {factura.lineas && factura.lineas.length > 0 ? (
-                factura.lineas.map((linea, index) => (
+                factura.lineas.map((linea: any, index: number) => (
                   <tr key={index} className="border-b">
                     <td className="py-2">{linea.descripcion}</td>
                     <td className="text-right py-2">{Number(linea.cantidad).toFixed(2)}</td>

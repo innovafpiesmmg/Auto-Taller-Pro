@@ -225,7 +225,7 @@ export default function RecogidasResiduos() {
                         <SelectContent>
                           {documentosDI?.map((documento) => (
                             <SelectItem key={documento.id} value={documento.id.toString()}>
-                              {documento.numero} - {format(new Date(documento.fechaRecogida), "dd/MM/yyyy")}
+                              {documento.numero} - {documento.fechaRecogida ? format(new Date(documento.fechaRecogida), "dd/MM/yyyy") : "-"}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -388,7 +388,7 @@ export default function RecogidasResiduos() {
                     {getDocumentoNumero(recogida.documentoDIId)}
                   </TableCell>
                   <TableCell data-testid={`text-contenedor-${recogida.id}`}>
-                    {getContenedorCodigo(recogida.contenedorId)}
+                    {recogida.contenedorId != null ? getContenedorCodigo(recogida.contenedorId) : "-"}
                   </TableCell>
                   <TableCell data-testid={`text-fecha-${recogida.id}`}>
                     {format(new Date(recogida.fechaRecogida), "dd/MM/yyyy")}

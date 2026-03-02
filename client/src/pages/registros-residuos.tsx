@@ -148,7 +148,7 @@ export default function RegistrosResiduos() {
   const handleEdit = (registro: RegistroResiduo) => {
     setEditingRegistro(registro);
     form.setValue("orId", registro.orId ?? undefined);
-    form.setValue("contenedorId", registro.contenedorId ?? undefined);
+    form.setValue("contenedorId", registro.contenedorId ?? 0);
     form.setValue("cantidad", registro.cantidad);
     form.setValue("fecha", new Date(registro.fecha));
     form.setValue("observaciones", registro.observaciones || "");

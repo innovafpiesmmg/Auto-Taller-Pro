@@ -306,7 +306,7 @@ export default function GestoresResiduos() {
                       <FormControl>
                         <Checkbox
                           data-testid="checkbox-autorizacion"
-                          checked={field.value}
+                          checked={field.value ?? false}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>

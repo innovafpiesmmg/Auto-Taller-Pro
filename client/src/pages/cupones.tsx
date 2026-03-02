@@ -394,7 +394,7 @@ export default function Cupones() {
                       <span className="font-medium">
                         {cupon.usosActuales} / {cupon.usosMaximos || '∞'}
                       </span>
-                      {cupon.usosMaximos && cupon.usosActuales >= cupon.usosMaximos && (
+                      {cupon.usosMaximos && (cupon.usosActuales ?? 0) >= cupon.usosMaximos && (
                         <span className="text-xs text-muted-foreground">Agotado</span>
                       )}
                     </div>

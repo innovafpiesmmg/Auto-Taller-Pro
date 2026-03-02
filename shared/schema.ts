@@ -8,7 +8,8 @@ import {
   decimal, 
   boolean,
   pgEnum,
-  serial
+  serial,
+  type AnyPgColumn
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
@@ -212,7 +213,7 @@ export const facturas = pgTable("facturas", {
   baseImponible: decimal("base_imponible", { precision: 10, scale: 2 }).notNull(),
   totalIgic: decimal("total_igic", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
-  facturaOrigenId: integer("factura_origen_id").references(() => facturas.id),
+  facturaOrigenId: integer("factura_origen_id").references((): AnyPgColumn => facturas.id),
   motivoRectificativa: text("motivo_rectificativa"),
   observaciones: text("observaciones"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -846,7 +847,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   nombre: true,
   apellidos: true,
-  rol: true,
+  roles: true,
 });
 
 export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true, updatedAt: true });

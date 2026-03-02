@@ -51,7 +51,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { SelectCobro, SelectFactura } from "@shared/schema";
+import type { Cobro, Factura } from "@shared/schema";
 import { insertCobroSchema } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -60,15 +60,15 @@ type FormValues = z.infer<typeof insertCobroSchema>;
 
 export default function Cobros() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCobro, setEditingCobro] = useState<SelectCobro | null>(null);
+  const [editingCobro, setEditingCobro] = useState<Cobro | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const { data: cobros, isLoading } = useQuery<SelectCobro[]>({
+  const { data: cobros, isLoading } = useQuery<Cobro[]>({
     queryKey: ["/api/cobros"],
   });
 
-  const { data: facturas } = useQuery<SelectFactura[]>({
+  const { data: facturas } = useQuery<Factura[]>({
     queryKey: ["/api/facturas"],
   });
 
@@ -91,20 +91,20 @@ export default function Cobros() {
     defaultValues: {
       facturaId: undefined,
       fecha: new Date(),
-      importe: 0,
+      importe: "0",
       metodoPago: "efectivo",
       referencia: "",
       notas: "",
     },
   });
 
-  const handleOpenDialog = (cobro?: SelectCobro) => {
+  const handleOpenDialog = (cobro?: Cobro) => {
     if (cobro) {
       setEditingCobro(cobro);
       form.reset({
         facturaId: cobro.facturaId || undefined,
         fecha: cobro.fecha ? new Date(cobro.fecha) : new Date(),
-        importe: parseFloat(cobro.importe.toString()),
+        importe: cobro.importe,
         metodoPago: cobro.metodoPago,
         referencia: cobro.referencia || "",
         notas: cobro.notas || "",
@@ -114,7 +114,7 @@ export default function Cobros() {
       form.reset({
         facturaId: undefined,
         fecha: new Date(),
-        importe: 0,
+        importe: "0",
         metodoPago: "efectivo",
         referencia: "",
         notas: "",
@@ -125,7 +125,7 @@ export default function Cobros() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/cobros", "POST", data);
+      return await apiRequest("/api/cobros", { method: "POST", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cobros"] });
@@ -147,7 +147,7 @@ export default function Cobros() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/cobros/${editingCobro?.id}`, "PUT", data);
+      return await apiRequest(`/api/cobros/${editingCobro?.id}`, { method: "PUT", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cobros"] });
@@ -170,7 +170,7 @@ export default function Cobros() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/cobros/${id}`, "DELETE");
+      return await apiRequest(`/api/cobros/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cobros"] });
@@ -304,7 +304,7 @@ export default function Cobros() {
                         <Wallet className="h-12 w-12 mb-2 opacity-50" />
                         <p>No hay cobros registrados</p>
                         <Button 
-                          variant="link" 
+                          variant="ghost" 
                           className="mt-2" 
                           onClick={() => handleOpenDialog()}
                           data-testid="button-crear-primer-cobro"
@@ -438,7 +438,7 @@ export default function Cobros() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(e.target.value)}
                           data-testid="input-importe"
                         />
                       </FormControl>
@@ -482,6 +482,7 @@ export default function Cobros() {
                       <Input
                         placeholder="Número de transacción, recibo..."
                         {...field}
+                        value={field.value ?? ""}
                         data-testid="input-referencia"
                       />
                     </FormControl>
@@ -500,6 +501,7 @@ export default function Cobros() {
                       <Textarea
                         placeholder="Notas adicionales"
                         {...field}
+                        value={field.value ?? ""}
                         data-testid="input-notas"
                       />
                     </FormControl>
