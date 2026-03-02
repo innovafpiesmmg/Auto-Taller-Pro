@@ -42,46 +42,39 @@ sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm install --silent"
 log "Dependencias actualizadas."
 
 # 4a. Migración compatibilidad: columna rol → roles[] (versiones anteriores a 2.0)
+#     Usa psql directamente con el DATABASE_URL para máxima fiabilidad en Ubuntu
 info "Verificando migración de columna de roles de usuario..."
-cat > /tmp/dms-migrate-roles.mjs << 'MIGEOF'
-import pg from 'pg';
-const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-try {
-  const r = await pool.query(
-    `SELECT 1 FROM information_schema.columns
-     WHERE table_name='users' AND column_name='rol'`
-  );
-  if (r.rows.length > 0) {
-    await pool.query(`
-      ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS roles text[] NOT NULL DEFAULT ARRAY['recepcion'];
-      UPDATE users SET roles = ARRAY[rol::text]
-        WHERE roles = ARRAY['recepcion'];
-      ALTER TABLE users DROP COLUMN rol;
-    `);
-    console.log('  [✔] Columna "rol" migrada a array "roles" correctamente.');
-  } else {
-    console.log('  [✔] Esquema de roles ya está actualizado.');
-  }
-} catch(e) {
-  console.error('  [!] Aviso en migración de roles:', e.message);
-} finally {
-  await pool.end();
-}
-MIGEOF
-sudo -u "${APP_USER}" bash -c \
-  "set -a; source '${ENV_FILE}'; set +a; node /tmp/dms-migrate-roles.mjs" \
-  || warn "Revisa la migración de roles si hay errores."
-rm -f /tmp/dms-migrate-roles.mjs
-log "Migración de esquema verificada."
+sudo -u "${APP_USER}" bash -c "
+  set -a; source '${ENV_FILE}'; set +a
+  psql \"\${DATABASE_URL}\" <<'SQLEOF'
+DO \$\$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'rol'
+  ) THEN
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS roles text[] NOT NULL DEFAULT ARRAY['recepcion'];
+    UPDATE users SET roles = ARRAY[rol::text]
+      WHERE roles = ARRAY['recepcion'];
+    ALTER TABLE users DROP COLUMN rol;
+    RAISE NOTICE 'Columna rol migrada a array roles correctamente.';
+  ELSE
+    RAISE NOTICE 'Esquema de roles ya actualizado. Sin cambios.';
+  END IF;
+END;
+\$\$;
+SQLEOF
+" && log "Migración de esquema verificada." \
+  || warn "psql no disponible o error de conexión. Continuando..."
 
-# 4b. Aplicar nuevas migraciones si las hay
+# 4b. Aplicar nuevas migraciones de esquema (no-interactivo)
+#     printf '\n' selecciona automáticamente la opción por defecto si aparece algún prompt
 info "Aplicando migraciones de base de datos..."
 sudo -u "${APP_USER}" bash -c "
   set -a; source '${ENV_FILE}'; set +a
   cd '${APP_DIR}'
-  npx drizzle-kit push 2>&1
+  printf '\n' | npx drizzle-kit push 2>&1
 "
 log "Migraciones aplicadas."
 
