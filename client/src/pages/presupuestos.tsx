@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useAuth } from "@/lib/auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,6 +73,8 @@ type FormValues = z.infer<typeof insertPresupuestoSchema> & {
 };
 
 export default function Presupuestos() {
+  const { user } = useAuth();
+  const canManageFacturas = user?.rol === "admin" || user?.rol === "finanzas";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPresupuesto, setEditingPresupuesto] = useState<Presupuesto | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -397,7 +400,7 @@ export default function Presupuestos() {
                             >
                               <ClipboardList className="h-4 w-4" />
                             </Button>
-                            {presupuesto.aprobado && (
+                            {presupuesto.aprobado && canManageFacturas && (
                               <Button 
                                 variant="ghost" 
                                 size="icon"

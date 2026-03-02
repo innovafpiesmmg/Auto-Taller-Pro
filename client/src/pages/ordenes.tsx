@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,6 +73,8 @@ const estadoLabels = {
 };
 
 export default function Ordenes() {
+  const { user } = useAuth();
+  const canManageFacturas = user?.rol === "admin" || user?.rol === "finanzas";
   const estados: Array<keyof typeof estadoColors> = ["abierta", "en_curso", "a_la_espera", "terminada", "facturada"];
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -353,7 +356,7 @@ export default function Ordenes() {
                                 )}
                               </div>
                               <div className="flex gap-2">
-                                {orden.estado === 'terminada' && (
+                                {orden.estado === 'terminada' && canManageFacturas && (
                                   <Button 
                                     variant="outline" 
                                     size="sm" 

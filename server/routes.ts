@@ -669,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/facturas", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+  app.post("/api/facturas", authenticateToken, requireRole("admin", "finanzas"), async (req, res) => {
     try {
       const { lineas, ...facturaData } = req.body;
       if (facturaData.fecha && typeof facturaData.fecha === 'string') facturaData.fecha = new Date(facturaData.fecha);
@@ -690,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/facturas/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+  app.put("/api/facturas/:id", authenticateToken, requireRole("admin", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const data = { ...req.body };
@@ -706,7 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/facturas/:id", authenticateToken, requireRole("admin", "jefe_taller", "finanzas"), async (req, res) => {
+  app.delete("/api/facturas/:id", authenticateToken, requireRole("admin", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.deleteFactura(id);

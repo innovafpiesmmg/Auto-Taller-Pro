@@ -52,6 +52,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/lib/auth";
 import type { Factura, Cliente, LineaFactura, ConfigEmpresa } from "@shared/schema";
 import { insertFacturaSchema } from "@shared/schema";
 import { z } from "zod";
@@ -87,6 +88,8 @@ export default function Facturas() {
   const [lineas, setLineas] = useState<LineaForm[]>([]);
   const [origenLabel, setOrigenLabel] = useState<string>("");
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canManageFacturas = user?.rol === "admin" || user?.rol === "finanzas";
 
   const { data: facturas, isLoading } = useQuery<Factura[]>({ queryKey: ["/api/facturas"] });
   const { data: clientes } = useQuery<Cliente[]>({ queryKey: ["/api/clientes"] });
@@ -403,9 +406,11 @@ export default function Facturas() {
           <Button variant="outline" onClick={handleExportCSV} data-testid="button-exportar-facturas">
             <Download className="h-4 w-4 mr-2" />Exportar CSV
           </Button>
-          <Button onClick={() => handleOpenDialog()} data-testid="button-nueva-factura">
-            <Plus className="h-4 w-4 mr-2" />Nueva Factura
-          </Button>
+          {canManageFacturas && (
+            <Button onClick={() => handleOpenDialog()} data-testid="button-nueva-factura">
+              <Plus className="h-4 w-4 mr-2" />Nueva Factura
+            </Button>
+          )}
         </div>
       </div>
 
@@ -518,12 +523,16 @@ export default function Facturas() {
                             <Button variant="ghost" size="icon" onClick={() => setPrintFactura(factura)} data-testid={`button-imprimir-${factura.id}`}>
                               <Printer className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(factura)} data-testid={`button-editar-${factura.id}`}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteId(factura.id)} data-testid={`button-eliminar-${factura.id}`}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {canManageFacturas && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(factura)} data-testid={`button-editar-${factura.id}`}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => setDeleteId(factura.id)} data-testid={`button-eliminar-${factura.id}`}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
