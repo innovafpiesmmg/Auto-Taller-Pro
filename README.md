@@ -391,6 +391,54 @@ sudo bash /opt/autotaller/scripts/restore-db.sh /var/backups/autotaller/autotall
 
 ---
 
+## Restablecimiento de la base de datos
+
+> **Solo disponible para el rol `admin`.** Esta operación es **irreversible**. Realiza siempre una copia de seguridad antes de ejecutarla.
+
+La función de restablecimiento elimina todos los datos operacionales del sistema y deja únicamente la cuenta del administrador que ejecuta la acción. Es especialmente útil en entornos educativos para preparar el sistema al inicio de un nuevo curso o ejercicio práctico.
+
+### Qué se elimina
+
+| Categoría | Tablas afectadas |
+|---|---|
+| Clientes y vehículos | `clientes`, `vehiculos` |
+| Agenda | `citas` |
+| Taller | `ordenes_reparacion`, `partes_trabajo`, `consumos_articulos` |
+| Presupuestos | `presupuestos` |
+| Facturación | `facturas`, `lineas_factura`, `cobros` |
+| Inventario | `articulos`, `ubicaciones`, `movimientos_almacen` |
+| Compras | `proveedores`, `pedidos_compra`, `lineas_pedido`, `recepciones`, `lineas_recepcion` |
+| CRM | `campanas`, `encuestas`, `respuestas_encuestas`, `cupones` |
+| Residuos | `catalogo_residuos`, `contenedores_residuos`, `gestores_residuos`, `registros_residuos`, `documentos_di`, `recogidas_residuos` |
+| Usuarios | Todos los usuarios **excepto** el administrador que ejecuta la acción |
+
+### Qué se conserva
+
+- La cuenta del administrador que realiza el restablecimiento.
+- La configuración de empresa (`config_empresa`): nombre, CIF, logo, dirección, etc.
+- La configuración del sistema (`config_sistema`): credenciales de CarAPI y otros parámetros globales.
+- Los contadores de secuencia (IDs) se reinician a 1.
+
+### Cómo restablecer desde la interfaz
+
+1. Acceder a **Configuración** (`/configuracion`) con una cuenta de administrador.
+2. Desplazarse hasta la sección **Zona de Peligro** al final de la página.
+3. Pulsar **Restablecer datos**.
+4. En el diálogo de confirmación, escribir exactamente `RESTABLECER` en el campo de texto.
+5. Pulsar **Restablecer ahora**.
+
+El sistema confirma la operación con un aviso y la sesión permanece activa. El administrador puede empezar a introducir nuevos datos de inmediato.
+
+### Cuándo usarlo
+
+- **Inicio de curso**: preparar el taller de pruebas para un nuevo grupo de alumnos.
+- **Cambio de ejercicio práctico**: limpiar datos de una práctica anterior sin reinstalar.
+- **Entorno de demos**: restablecer el sistema a un estado vacío después de una presentación.
+
+> Para entornos de producción reales se recomienda hacer una copia de seguridad completa antes de restablecer: `sudo bash /opt/autotaller/scripts/backup-db.sh`
+
+---
+
 ## Nginx como proxy inverso (recomendado)
 
 Para servir la aplicación en el puerto 80/443 con SSL:
@@ -522,7 +570,7 @@ Auto-Taller-Pro/
 | Proveedores | `/proveedores` | Gestión de proveedores |
 | Compras | `/compras` | Pedidos de compra |
 | Usuarios | `/usuarios` | Gestión de usuarios y roles |
-| Configuración | `/configuracion` | Datos empresa + CarAPI |
+| Configuración | `/configuracion` | Datos empresa, CarAPI y restablecimiento de BD |
 
 ---
 
