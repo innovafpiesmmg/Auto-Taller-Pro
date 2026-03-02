@@ -421,7 +421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/ordenes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico"), async (req, res) => {
+  app.get("/api/ordenes/:id", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico", "finanzas"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const orden = await storage.getOrdenReparacion(id);
@@ -472,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Partes de Trabajo routes
-  app.get("/api/ordenes/:orId/partes", authenticateToken, requireRole("admin", "jefe_taller", "mecanico"), async (req, res) => {
+  app.get("/api/ordenes/:orId/partes", authenticateToken, requireRole("admin", "jefe_taller", "mecanico", "finanzas", "recepcion"), async (req, res) => {
     try {
       const orId = parseInt(req.params.orId);
       const partes = await storage.getPartesTrabajo(orId);
@@ -552,7 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Consumos routes
-  app.get("/api/ordenes/:orId/consumos", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico"), async (req, res) => {
+  app.get("/api/ordenes/:orId/consumos", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico", "finanzas", "recepcion"), async (req, res) => {
     try {
       const orId = parseInt(req.params.orId);
       const consumos = await storage.getConsumosArticulos(orId);

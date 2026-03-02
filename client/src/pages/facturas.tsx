@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -95,38 +96,56 @@ export default function Facturas() {
   const { data: clientes } = useQuery<Cliente[]>({ queryKey: ["/api/clientes"] });
   const { data: empresa } = useQuery<ConfigEmpresa>({ queryKey: ["/api/config/empresa"] });
 
+  // useSearch de wouter detecta cambios en la query string aunque el componente
+  // ya esté montado (al navegar de /ordenes → /facturas?orId=X&clienteId=Y).
+  const search = useSearch();
+  // Ref para no procesar dos veces el mismo search string
+  const handledSearch = useRef<string>("");
+
   // ── Auto-abrir desde OR o Presupuesto vía URL params ──────────────────
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    // Sin parámetros relevantes o ya procesado → salir
+    if (!search || search === handledSearch.current) return;
+    if (!search.includes("orId=") && !search.includes("presupuestoId=")) return;
+    // Esperar a que los clientes estén disponibles
+    if (!clientes) return;
+
+    const params = new URLSearchParams(search);
     const orId = params.get("orId");
     const presupuestoId = params.get("presupuestoId");
     const clienteId = params.get("clienteId");
 
-    if (!facturas || !clientes || dialogOpen || editingFactura) return;
+    if (!clienteId) return;
 
-    if (orId && clienteId) {
-      const cliente = clientes.find(c => c.id === parseInt(clienteId));
-      if (!cliente) return;
+    const cliente = clientes.find(c => c.id === parseInt(clienteId));
+    if (!cliente) return;
 
-      // Cargar partes + consumos de la OR para pre-rellenar líneas
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+    // Marcar como procesado para evitar duplicados
+    handledSearch.current = search;
 
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const newNumero = `F-${Date.now().toString().slice(-6)}`;
+
+    if (orId) {
+      // Cargar OR + partes + consumos en paralelo
       Promise.all([
+        fetch(`/api/ordenes/${orId}`, { headers }).then(r => r.ok ? r.json() : null),
         fetch(`/api/ordenes/${orId}/partes`, { headers }).then(r => r.ok ? r.json() : []),
         fetch(`/api/ordenes/${orId}/consumos`, { headers }).then(r => r.ok ? r.json() : []),
-      ]).then(([partes, consumos]) => {
+      ]).then(([orden, partes, consumos]) => {
         const lineasOR: LineaForm[] = [
           ...partes.map((p: any) => ({
-            tipo: "mano_obra",
+            tipo: "mano_obra" as const,
             descripcion: p.descripcion || "Mano de obra",
             cantidad: parseFloat(p.tiempoEstimado || "1"),
             precioUnitario: parseFloat(p.precioMO || "45"),
             igic: 0,
           })),
           ...consumos.map((c: any) => ({
-            tipo: "articulo",
+            tipo: "articulo" as const,
             descripcion: c.articulo?.descripcion || `Artículo #${c.articuloId}`,
             cantidad: parseFloat(c.cantidad || "1"),
             precioUnitario: parseFloat(c.precioUnitario || "0"),
@@ -134,11 +153,20 @@ export default function Facturas() {
           })),
         ];
 
-        const totales = calcTotales(lineasOR);
-        const newNumero = `F-${Date.now().toString().slice(-6)}`;
+        // Si la OR no tiene partes ni consumos, añadir línea genérica con el código de la OR
+        if (lineasOR.length === 0 && orden) {
+          lineasOR.push({
+            tipo: "otros" as const,
+            descripcion: `Trabajos OR ${orden.codigo || orId}${orden.observaciones ? ` — ${orden.observaciones}` : ""}`,
+            cantidad: 1,
+            precioUnitario: 0,
+            igic: 7,
+          });
+        }
 
+        const totales = calcTotales(lineasOR);
         setLineas(lineasOR);
-        setOrigenLabel(`Orden de Reparación #${orId}`);
+        setOrigenLabel(`Orden de Reparación ${orden?.codigo || `#${orId}`}`);
         form.reset({
           numero: newNumero,
           serie: "F",
@@ -148,13 +176,11 @@ export default function Facturas() {
           baseImponible: parseFloat(totales.base.toFixed(2)),
           totalIgic: parseFloat(totales.igic.toFixed(2)),
           total: parseFloat(totales.total.toFixed(2)),
-          observaciones: `Factura generada desde OR #${orId}`,
+          observaciones: `Factura generada desde OR ${orden?.codigo || `#${orId}`}`,
           orId: parseInt(orId),
         });
         setDialogOpen(true);
       }).catch(() => {
-        // Si falla la carga, abrir con datos mínimos
-        const newNumero = `F-${Date.now().toString().slice(-6)}`;
         setLineas([]);
         form.reset({
           numero: newNumero, serie: "F", tipo: "ordinaria",
@@ -165,18 +191,14 @@ export default function Facturas() {
         });
         setDialogOpen(true);
       });
-    } else if (presupuestoId && clienteId) {
-      // Cargar líneas desde presupuesto
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
 
+    } else if (presupuestoId) {
       fetch(`/api/presupuestos/${presupuestoId}`, { headers })
         .then(r => r.ok ? r.json() : null)
         .then(pres => {
           const lineasPres: LineaForm[] = pres?.lineas
             ? JSON.parse(pres.lineas).map((l: any) => ({
-                tipo: l.tipo || "otros",
+                tipo: (l.tipo || "otros") as "mano_obra" | "articulo" | "otros",
                 descripcion: l.descripcion || "",
                 cantidad: parseFloat(l.cantidad || "1"),
                 precioUnitario: parseFloat(l.precioUnitario || "0"),
@@ -185,8 +207,6 @@ export default function Facturas() {
             : [];
 
           const totales = calcTotales(lineasPres);
-          const newNumero = `F-${Date.now().toString().slice(-6)}`;
-
           setLineas(lineasPres);
           setOrigenLabel(`Presupuesto #${presupuestoId}`);
           form.reset({
@@ -200,7 +220,7 @@ export default function Facturas() {
           setDialogOpen(true);
         });
     }
-  }, [facturas, clientes]);
+  }, [search, clientes]);
 
   useEffect(() => { setPage(1); }, [searchTerm]);
 
