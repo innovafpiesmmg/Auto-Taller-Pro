@@ -41,7 +41,42 @@ info "Actualizando dependencias npm..."
 sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm install --silent"
 log "Dependencias actualizadas."
 
-# 4. Aplicar nuevas migraciones si las hay
+# 4a. Migración compatibilidad: columna rol → roles[] (versiones anteriores a 2.0)
+info "Verificando migración de columna de roles de usuario..."
+cat > /tmp/dms-migrate-roles.mjs << 'MIGEOF'
+import pg from 'pg';
+const { Pool } = pg;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+try {
+  const r = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_name='users' AND column_name='rol'`
+  );
+  if (r.rows.length > 0) {
+    await pool.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS roles text[] NOT NULL DEFAULT ARRAY['recepcion'];
+      UPDATE users SET roles = ARRAY[rol::text]
+        WHERE roles = ARRAY['recepcion'];
+      ALTER TABLE users DROP COLUMN rol;
+    `);
+    console.log('  [✔] Columna "rol" migrada a array "roles" correctamente.');
+  } else {
+    console.log('  [✔] Esquema de roles ya está actualizado.');
+  }
+} catch(e) {
+  console.error('  [!] Aviso en migración de roles:', e.message);
+} finally {
+  await pool.end();
+}
+MIGEOF
+sudo -u "${APP_USER}" bash -c \
+  "set -a; source '${ENV_FILE}'; set +a; node /tmp/dms-migrate-roles.mjs" \
+  || warn "Revisa la migración de roles si hay errores."
+rm -f /tmp/dms-migrate-roles.mjs
+log "Migración de esquema verificada."
+
+# 4b. Aplicar nuevas migraciones si las hay
 info "Aplicando migraciones de base de datos..."
 sudo -u "${APP_USER}" bash -c "
   set -a; source '${ENV_FILE}'; set +a

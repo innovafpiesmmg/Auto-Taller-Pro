@@ -51,8 +51,8 @@ const update = await pool.query(
 
 if (update.rowCount === 0) {
   await pool.query(
-    \`INSERT INTO users (username, email, password, nombre, apellidos, rol, activo)
-     VALUES (\$1, \$2, \$3, 'Administrador', 'Sistema', 'admin', true)\`,
+    \`INSERT INTO users (username, email, password, nombre, apellidos, roles, activo)
+     VALUES (\$1, \$2, \$3, 'Administrador', 'Sistema', ARRAY['admin'], true)\`,
     ['${ADMIN_USER}', '${ADMIN_EMAIL}', hash]
   );
   console.log('Usuario creado.');

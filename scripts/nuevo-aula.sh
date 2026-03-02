@@ -221,8 +221,8 @@ ADMIN_HASH=$(cd "${APP_DIR}" && node -e \
 
 if [[ -n "${ADMIN_HASH}" ]]; then
   sudo -u postgres psql -d "${DB_NAME}" -c \
-    "INSERT INTO users (username,email,password,nombre,apellidos,rol,activo)
-     VALUES ('admin','admin@${AULA_SLUG}.local','${ADMIN_HASH}','Administrador','${NOMBRE_AULA}','admin',true)
+    "INSERT INTO users (username,email,password,nombre,apellidos,roles,activo)
+     VALUES ('admin','admin@${AULA_SLUG}.local','${ADMIN_HASH}','Administrador','${NOMBRE_AULA}',ARRAY['admin'],true)
      ON CONFLICT (username) DO UPDATE SET password='${ADMIN_HASH}',activo=true;" \
     2>/dev/null && log "Usuario admin creado." \
     || warn "No se pudo crear el admin. Hazlo manualmente desde la aplicación."

@@ -171,8 +171,8 @@ ADMIN_HASH=$(cd "${APP_DIR}" && node -e \
 
 if [[ -n "${ADMIN_HASH}" ]]; then
   sudo -u postgres psql -d "${DB_NAME}" -c \
-    "INSERT INTO users (username,email,password,nombre,apellidos,rol,activo)
-     VALUES ('admin','admin@taller.local','${ADMIN_HASH}','Administrador','Sistema','admin',true)
+    "INSERT INTO users (username,email,password,nombre,apellidos,roles,activo)
+     VALUES ('admin','admin@taller.local','${ADMIN_HASH}','Administrador','Sistema',ARRAY['admin'],true)
      ON CONFLICT (username) DO UPDATE SET password='${ADMIN_HASH}',activo=true;" \
     2>/dev/null && log "Usuario admin creado/actualizado." \
     || warn "No se pudo insertar el usuario. Ejecuta: scripts/reset-admin.sh"
