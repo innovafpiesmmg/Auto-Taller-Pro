@@ -40,7 +40,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   apellidos: varchar("apellidos", { length: 100 }),
-  rol: rolEnum("rol").notNull().default("recepcion"),
+  roles: text("roles").array().notNull().default(["recepcion"]),
   activo: boolean("activo").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

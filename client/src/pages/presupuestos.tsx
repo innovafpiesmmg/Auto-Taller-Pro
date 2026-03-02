@@ -74,7 +74,7 @@ type FormValues = z.infer<typeof insertPresupuestoSchema> & {
 
 export default function Presupuestos() {
   const { user } = useAuth();
-  const canManageFacturas = user?.rol === "admin" || user?.rol === "finanzas";
+  const canManageFacturas = user?.roles?.some(r => ["admin", "finanzas"].includes(r)) ?? false;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPresupuesto, setEditingPresupuesto] = useState<Presupuesto | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);

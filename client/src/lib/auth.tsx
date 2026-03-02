@@ -6,7 +6,7 @@ interface User {
   email: string;
   nombre: string;
   apellidos?: string;
-  rol: string;
+  roles: string[];
 }
 
 interface AuthContextType {
@@ -27,8 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedToken = localStorage.getItem("auth_token");
     const storedUser = localStorage.getItem("auth_user");
     if (storedToken && storedUser) {
+      const parsed = JSON.parse(storedUser);
+      // Compatibilidad hacia atrás: migrar rol:string → roles:string[]
+      if ((parsed as any).rol && !parsed.roles) {
+        parsed.roles = [(parsed as any).rol];
+        delete (parsed as any).rol;
+      }
       setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+      setUser(parsed);
     }
   }, []);
 

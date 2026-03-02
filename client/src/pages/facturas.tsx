@@ -89,7 +89,7 @@ export default function Facturas() {
   const [origenLabel, setOrigenLabel] = useState<string>("");
   const { toast } = useToast();
   const { user } = useAuth();
-  const canManageFacturas = user?.rol === "admin" || user?.rol === "finanzas";
+  const canManageFacturas = user?.roles?.some(r => ["admin", "finanzas"].includes(r)) ?? false;
 
   const { data: facturas, isLoading } = useQuery<Factura[]>({ queryKey: ["/api/facturas"] });
   const { data: clientes } = useQuery<Cliente[]>({ queryKey: ["/api/clientes"] });

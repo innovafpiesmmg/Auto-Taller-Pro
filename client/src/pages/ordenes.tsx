@@ -74,7 +74,7 @@ const estadoLabels = {
 
 export default function Ordenes() {
   const { user } = useAuth();
-  const canManageFacturas = user?.rol === "admin" || user?.rol === "finanzas";
+  const canManageFacturas = user?.roles?.some(r => ["admin", "finanzas"].includes(r)) ?? false;
   const estados: Array<keyof typeof estadoColors> = ["abierta", "en_curso", "a_la_espera", "terminada", "facturada"];
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");

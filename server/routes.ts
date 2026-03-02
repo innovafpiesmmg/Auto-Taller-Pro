@@ -58,7 +58,7 @@ const registerSchema = z.object({
   password: z.string().min(8),
   nombre: z.string().min(1),
   apellidos: z.string().optional(),
-  rol: z.enum(["admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"]),
+  roles: z.array(z.enum(["admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"])).min(1),
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -81,10 +81,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
-  // Middleware para verificar roles
+  // Middleware para verificar roles (soporta múltiples roles por usuario)
   const requireRole = (...allowedRoles: string[]) => {
     return (req: any, res: any, next: any) => {
-      if (!req.user || !allowedRoles.includes(req.user.rol)) {
+      const userRoles: string[] = req.user?.roles ?? (req.user?.rol ? [req.user.rol] : []);
+      if (!req.user || !userRoles.some((r: string) => allowedRoles.includes(r))) {
         return res.status(403).json({ error: "No tienes permisos para esta acción" });
       }
       next();
@@ -109,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         nombre: validated.nombre,
         apellidos: validated.apellidos,
-        rol: validated.rol,
+        roles: validated.roles,
       });
 
       const { password: _, ...userWithoutPassword } = user;
@@ -137,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, rol: user.rol },
+        { id: user.id, username: user.username, roles: user.roles },
         JWT_SECRET,
         { expiresIn: "24h" }
       );

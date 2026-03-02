@@ -224,8 +224,8 @@ export default function OrdenDetalle() {
   const totalIgic = consumos?.reduce((sum, c) => sum + (Number(c.precioUnitario || 0) * Number(c.cantidad || 0) * (Number(c.igic || 0) / 100)), 0) || 0;
   const totalGeneral = totalMO + totalArticulos + totalIgic;
 
-  const mecanicos = usuarios?.filter(u => u.rol === "mecanico" || u.rol === "jefe_taller") || [];
-  const recepcionistas = usuarios?.filter(u => ["recepcion", "admin", "jefe_taller"].includes(u.rol)) || [];
+  const mecanicos = usuarios?.filter(u => u.roles?.some((r: string) => ["mecanico", "jefe_taller"].includes(r))) || [];
+  const recepcionistas = usuarios?.filter(u => u.roles?.some((r: string) => ["recepcion", "admin", "jefe_taller"].includes(r))) || [];
 
   const recepcionCompleta = !!(orden.checklistRecepcion && orden.firmaDigital && orden.recepcionadoPorId);
 
@@ -297,7 +297,7 @@ export default function OrdenDetalle() {
               <SelectContent>
                 {recepcionistas.map(u => (
                   <SelectItem key={u.id} value={u.id.toString()}>
-                    {u.nombre} {u.apellidos || ""} — {u.rol}
+                    {u.nombre} {u.apellidos || ""} — {u.roles?.join(', ')}
                   </SelectItem>
                 ))}
               </SelectContent>

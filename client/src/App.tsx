@@ -82,7 +82,7 @@ function ProtectedRouter() {
             </div>
             <div className="flex items-center gap-1 lg:gap-3 shrink-0">
               <div className="text-sm text-muted-foreground hidden xl:block whitespace-nowrap">
-                {user?.nombre} · <span className="capitalize">{user?.rol?.replace('_', ' ')}</span>
+                {user?.nombre} · <span className="capitalize">{user?.roles?.map(r => r.replace('_', ' ')).join(', ')}</span>
               </div>
               <ThemeToggle />
               <Button

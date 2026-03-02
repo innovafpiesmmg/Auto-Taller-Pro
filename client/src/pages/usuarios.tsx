@@ -30,13 +30,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -94,7 +87,7 @@ export default function Usuarios() {
       email: "",
       nombre: "",
       apellidos: "",
-      rol: "recepcion",
+      roles: ["recepcion"],
     },
   });
 
@@ -103,11 +96,11 @@ export default function Usuarios() {
       setEditingUser(user);
       form.reset({
         username: user.username,
-        password: "", // No mostrar la contraseña
+        password: "",
         email: user.email,
         nombre: user.nombre,
         apellidos: user.apellidos || "",
-        rol: user.rol,
+        roles: (user as any).roles ?? ["recepcion"],
       });
     } else {
       setEditingUser(null);
@@ -117,7 +110,7 @@ export default function Usuarios() {
         email: "",
         nombre: "",
         apellidos: "",
-        rol: "recepcion",
+        roles: ["recepcion"],
       });
     }
     setDialogOpen(true);
@@ -219,28 +212,26 @@ export default function Usuarios() {
     }
   };
 
-  const getRolBadge = (rol: string) => {
-    const colors = {
-      admin: "bg-red-500",
-      jefe_taller: "bg-blue-500",
-      recepcion: "bg-green-500",
-      mecanico: "bg-yellow-500",
-      almacen: "bg-purple-500",
-      finanzas: "bg-pink-500",
-    };
-    return colors[rol as keyof typeof colors] || "bg-gray-500";
+  const ROL_OPTIONS = [
+    { value: "admin", label: "Administrador" },
+    { value: "jefe_taller", label: "Jefe de Taller" },
+    { value: "recepcion", label: "Recepción" },
+    { value: "mecanico", label: "Mecánico" },
+    { value: "almacen", label: "Almacén" },
+    { value: "finanzas", label: "Finanzas" },
+  ];
+
+  const ROL_COLORS: Record<string, string> = {
+    admin: "bg-red-500 text-white",
+    jefe_taller: "bg-blue-500 text-white",
+    recepcion: "bg-green-500 text-white",
+    mecanico: "bg-yellow-500 text-white",
+    almacen: "bg-purple-500 text-white",
+    finanzas: "bg-pink-500 text-white",
   };
 
   const getRolLabel = (rol: string) => {
-    const labels = {
-      admin: "Administrador",
-      jefe_taller: "Jefe de Taller",
-      recepcion: "Recepción",
-      mecanico: "Mecánico",
-      almacen: "Almacén",
-      finanzas: "Finanzas",
-    };
-    return labels[rol as keyof typeof labels] || rol;
+    return ROL_OPTIONS.find(o => o.value === rol)?.label ?? rol;
   };
 
   return (
@@ -317,9 +308,13 @@ export default function Usuarios() {
                         </TableCell>
                         <TableCell data-testid={`text-email-${user.id}`}>{user.email}</TableCell>
                         <TableCell>
-                          <Badge className={getRolBadge(user.rol)} data-testid={`badge-rol-${user.id}`}>
-                            {getRolLabel(user.rol)}
-                          </Badge>
+                          <div className="flex flex-wrap gap-1" data-testid={`badge-rol-${user.id}`}>
+                            {((user as any).roles ?? []).map((r: string) => (
+                              <Badge key={r} className={ROL_COLORS[r] ?? "bg-gray-500 text-white"}>
+                                {getRolLabel(r)}
+                              </Badge>
+                            ))}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge 
@@ -473,29 +468,35 @@ export default function Usuarios() {
 
               <FormField
                 control={form.control}
-                name="rol"
-                render={({ field }) => (
+                name="roles"
+                render={() => (
                   <FormItem>
-                    <FormLabel>Rol</FormLabel>
-                    <Select
-                      data-testid="select-rol"
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar rol" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="admin" data-testid="option-rol-admin">Administrador</SelectItem>
-                        <SelectItem value="jefe_taller" data-testid="option-rol-jefe">Jefe de Taller</SelectItem>
-                        <SelectItem value="recepcion" data-testid="option-rol-recepcion">Recepción</SelectItem>
-                        <SelectItem value="mecanico" data-testid="option-rol-mecanico">Mecánico</SelectItem>
-                        <SelectItem value="almacen" data-testid="option-rol-almacen">Almacén</SelectItem>
-                        <SelectItem value="finanzas" data-testid="option-rol-finanzas">Finanzas</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Roles</FormLabel>
+                    <div className="grid grid-cols-2 gap-2 pt-1" data-testid="select-rol">
+                      {ROL_OPTIONS.map(option => (
+                        <div key={option.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`rol-${option.value}`}
+                            data-testid={`option-rol-${option.value}`}
+                            checked={form.watch("roles")?.includes(option.value) ?? false}
+                            onCheckedChange={(checked) => {
+                              const current = form.getValues("roles") ?? [];
+                              if (checked) {
+                                form.setValue("roles", [...current, option.value], { shouldValidate: true });
+                              } else {
+                                form.setValue("roles", current.filter(r => r !== option.value), { shouldValidate: true });
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`rol-${option.value}`}
+                            className="text-sm font-medium leading-none cursor-pointer"
+                          >
+                            {option.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -44,7 +44,7 @@ The system uses a modern full-stack architecture. The frontend is built with **R
 - **Project Structure**: `client/` (Frontend), `server/` (Backend), `shared/` (Shared types/schemas).
 
 **Technical Implementations & Feature Specifications:**
-- **Authentication & Roles**: JWT-based authentication with Role-Based Access Control (RBAC) (Admin, Workshop Manager, Reception, Mechanic, Warehouse, Finance).
+- **Authentication & Roles**: JWT-based authentication with Role-Based Access Control (RBAC). Roles: admin, jefe_taller, recepcion, mecanico, almacen, finanzas. **A user can hold multiple roles simultaneously** — stored as `text[]` array in `users.roles`. JWT payload includes `roles: string[]`. `requireRole()` middleware checks if any of the user's roles is in the allowed list. Frontend uses `user?.roles?.some(r => [...].includes(r))` for role checks. Facturas (create/edit/delete) restricted to admin and finanzas only.
 - **Data Validation**: Zod for both frontend and backend.
 - **State Management**: React Query for data fetching and caching.
 - **Database**: PostgreSQL with Drizzle ORM.
