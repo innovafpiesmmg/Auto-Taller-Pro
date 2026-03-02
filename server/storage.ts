@@ -288,6 +288,9 @@ export interface IStorage {
   // Configuración de Empresa
   getConfigEmpresa(): Promise<ConfigEmpresa | undefined>;
   createOrUpdateConfigEmpresa(config: InsertConfigEmpresa): Promise<ConfigEmpresa>;
+
+  // Administración
+  resetDatabase(adminId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1187,6 +1190,44 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return created;
     }
+  }
+  async resetDatabase(adminId: number): Promise<void> {
+    // Truncar todas las tablas operacionales en orden de dependencia
+    // (las más dependientes primero para evitar conflictos de FK)
+    await db.execute(sql`
+      TRUNCATE TABLE
+        documentos_di,
+        recogidas_residuos,
+        respuestas_encuestas,
+        registros_residuos,
+        cobros,
+        lineas_factura,
+        consumos_articulos,
+        partes_trabajo,
+        facturas,
+        encuestas,
+        ordenes_reparacion,
+        lineas_recepcion,
+        recepciones,
+        lineas_pedido,
+        movimientos_almacen,
+        presupuestos,
+        citas,
+        pedidos_compra,
+        contenedores_residuos,
+        cupones,
+        campanas,
+        vehiculos,
+        clientes,
+        articulos,
+        proveedores,
+        ubicaciones,
+        gestores_residuos,
+        catalogo_residuos
+      RESTART IDENTITY
+    `);
+    // Eliminar todos los usuarios excepto el administrador que ejecuta el reset
+    await db.execute(sql`DELETE FROM users WHERE id != ${adminId}`);
   }
 }
 

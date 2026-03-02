@@ -6,9 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, XCircle, Save, Building2 } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Save, Building2, Trash2, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/auth";
 
 interface CarAPIConfig {
   isConfigured: boolean;
@@ -34,8 +45,12 @@ interface ConfigEmpresa {
 
 export default function Configuracion() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.some(r => r === "admin") ?? false;
   const [token, setToken] = useState("");
   const [secret, setSecret] = useState("");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
 
   // Estado para configuración de empresa
   const [empresaForm, setEmpresaForm] = useState({
@@ -126,6 +141,20 @@ export default function Configuracion() {
         title: "Error",
         description: error.message || "No se pudo guardar la configuración",
       });
+    },
+  });
+
+  const resetDatabaseMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("/api/admin/reset-database", { method: "POST", body: {} });
+    },
+    onSuccess: () => {
+      toast({ title: "Base de datos restablecida", description: "Solo queda tu usuario administrador. Todos los datos operacionales han sido eliminados." });
+      setResetDialogOpen(false);
+      setResetConfirmText("");
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Error al restablecer", description: error.message || "No se pudo restablecer la base de datos" });
     },
   });
 
@@ -446,6 +475,90 @@ export default function Configuracion() {
           </form>
         </CardContent>
       </Card>
+
+      {/* ── ZONA DE PELIGRO ─────────────────────────────────────────────── */}
+      {isAdmin && (
+        <>
+          <Separator className="my-2" />
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <ShieldAlert className="h-5 w-5" />
+                Zona de Peligro
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Acciones irreversibles. Úsalas únicamente para preparar el sistema para un nuevo ejercicio o un entorno de pruebas.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-md border border-destructive/30 p-4">
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">Restablecer base de datos</p>
+                  <p className="text-xs text-muted-foreground">
+                    Elimina todos los datos operacionales (clientes, vehículos, órdenes, facturas, artículos, citas…) y todos los usuarios excepto tu cuenta de administrador. La configuración de empresa y CarAPI se conserva.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { setResetConfirmText(""); setResetDialogOpen(true); }}
+                  data-testid="button-reset-database-trigger"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Restablecer datos
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Diálogo de confirmación de reset */}
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="h-5 w-5" />
+              Confirmar restablecimiento
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente:</p>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  <li>Todos los clientes y vehículos</li>
+                  <li>Todas las órdenes de reparación y partes</li>
+                  <li>Todas las facturas y cobros</li>
+                  <li>Todos los artículos y movimientos de almacén</li>
+                  <li>Todas las citas y presupuestos</li>
+                  <li>Todos los usuarios excepto tu cuenta</li>
+                </ul>
+                <p className="text-sm font-medium">Escribe <span className="font-mono text-destructive">RESTABLECER</span> para confirmar:</p>
+                <Input
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  placeholder="RESTABLECER"
+                  data-testid="input-reset-confirm"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setResetConfirmText("")}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={resetConfirmText !== "RESTABLECER" || resetDatabaseMutation.isPending}
+              onClick={() => resetDatabaseMutation.mutate()}
+              data-testid="button-reset-database-confirm"
+            >
+              {resetDatabaseMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Restableciendo...</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" />Restablecer ahora</>
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

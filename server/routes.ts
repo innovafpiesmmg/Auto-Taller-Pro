@@ -1859,6 +1859,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Administración: Restablecimiento de base de datos ────────────────────
+  app.post("/api/admin/reset-database", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const adminId = (req as any).user?.id as number | undefined;
+      if (!adminId) return res.status(400).json({ error: "No se pudo identificar el usuario administrador." });
+      await storage.resetDatabase(adminId);
+      res.json({ ok: true, message: "Base de datos restablecida. Solo queda tu usuario administrador." });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
