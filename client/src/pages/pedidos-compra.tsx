@@ -91,15 +91,6 @@ export default function PedidosCompra() {
   });
   const { data: lineas, isLoading: lineasLoading } = useQuery<LineaPedido[]>({
     queryKey: ["/api/pedidos-compra", detailPedido?.id, "lineas"],
-    queryFn: async () => {
-      if (!detailPedido) return [];
-      const res = await fetch(`/api/pedidos-compra/${detailPedido.id}/lineas`, {
-        credentials: "include",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      if (!res.ok) throw new Error("Error al cargar líneas");
-      return res.json();
-    },
     enabled: !!detailPedido,
   });
 
