@@ -164,6 +164,7 @@ export const articulos = pgTable("articulos", {
   stock: integer("stock").default(0),
   stockMinimo: integer("stock_minimo").default(0),
   igic: decimal("igic", { precision: 5, scale: 2 }).default("7.00"),
+  codigoBarras: varchar("codigo_barras", { length: 50 }),
   activo: boolean("activo").default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

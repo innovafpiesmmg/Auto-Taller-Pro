@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Clock, Edit, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Clock, Edit, Trash2, FileText } from "lucide-react";
+import { useLocation } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,7 @@ export default function Citas() {
   const [editingCita, setEditingCita] = useState<Cita | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -117,6 +119,7 @@ export default function Citas() {
       estado: "pendiente",
       canal: "telefono",
       tecnicoId: undefined,
+      duracion: 60,
       notas: "",
     },
   });
@@ -154,7 +157,8 @@ export default function Citas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/citas", { method: "POST", body: JSON.stringify(data) });
+      const res = await apiRequest("/api/citas", { method: "POST", body: JSON.stringify(data) });
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/citas"] });
@@ -176,7 +180,8 @@ export default function Citas() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/citas/${editingCita?.id}`, { method: "PUT", body: JSON.stringify(data) });
+      const res = await apiRequest(`/api/citas/${editingCita?.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/citas"] });
@@ -213,6 +218,38 @@ export default function Citas() {
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar la cita",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createORMutation = useMutation({
+    mutationFn: async (cita: Cita) => {
+      const res = await apiRequest("/api/ordenes", {
+        method: "POST",
+        body: JSON.stringify({
+          codigo: `OR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          clienteId: cita.clienteId,
+          vehiculoId: cita.vehiculoId,
+          citaId: cita.id,
+          estado: "abierta",
+          fechaApertura: new Date(),
+          kmEntrada: 0
+        })
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Orden creada",
+        description: "La orden de reparación se ha creado correctamente",
+      });
+      setLocation(`/ordenes/${data.id}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la orden de reparación",
         variant: "destructive",
       });
     },
@@ -492,40 +529,20 @@ export default function Citas() {
                                       <div className="flex items-center gap-1 mt-2 text-sm">
                                         <Clock className="h-3 w-3" />
                                         {format(new Date(cita.fechaHora), 'HH:mm', { locale: es })}
+                                        {cita.duracion && <span className="ml-2 text-muted-foreground">({cita.duracion} min)</span>}
                                       </div>
                                     )}
                                   </div>
                                   <div className="flex gap-2">
-                                    {isConfirmedOrInProgress && (
+                                    {cita.estado === 'confirmada' && (
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={async () => {
-                                          try {
-                                            const res = await apiRequest("/api/ordenes", {
-                                              method: "POST",
-                                              body: JSON.stringify({
-                                                codigo: `OR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                                                clienteId: cita.clienteId,
-                                                vehiculoId: cita.vehiculoId,
-                                                citaId: cita.id,
-                                                estado: "abierta",
-                                                fechaApertura: new Date(),
-                                                kmEntrada: 0
-                                              })
-                                            });
-                                            const newOr = await res.json();
-                                            window.location.href = `/ordenes/${newOr.id}`;
-                                          } catch (error) {
-                                            toast({
-                                              title: "Error",
-                                              description: "No se pudo crear la orden de reparación",
-                                              variant: "destructive",
-                                            });
-                                          }
-                                        }}
+                                        onClick={() => createORMutation.mutate(cita)}
+                                        disabled={createORMutation.isPending}
                                         data-testid={`button-crear-or-cita-${cita.id}`}
                                       >
+                                        <FileText className="h-4 w-4 mr-1" />
                                         Crear OR
                                       </Button>
                                     )}

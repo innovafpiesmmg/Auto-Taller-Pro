@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Package, AlertTriangle, Edit, Trash2, Download } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Edit, Trash2, Download, Barcode, Printer, RefreshCw } from "lucide-react";
+import BarcodeComponent from "react-barcode";
 import {
   Dialog,
   DialogContent,
@@ -65,7 +66,49 @@ type FormValues = {
   marca?: string | null;
   igic?: string | null;
   activo?: boolean | null;
+  codigoBarras?: string | null;
 };
+
+function generateEAN13(): string {
+  const prefix = "200";
+  const body = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join("");
+  const digits = (prefix + body).split("").map(Number);
+  const sum = digits.reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0);
+  const checkDigit = (10 - (sum % 10)) % 10;
+  return prefix + body + checkDigit;
+}
+
+function printBarcode(codigoBarras: string, descripcion: string, referencia: string) {
+  const printWindow = window.open("", "_blank", "width=400,height=300");
+  if (!printWindow) return;
+  printWindow.document.write(`<!DOCTYPE html>
+<html><head><title>Etiqueta</title>
+<style>
+  body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+  .label { text-align: center; padding: 12px; border: 1px solid #ccc; border-radius: 6px; }
+  .desc { font-size: 11px; font-weight: bold; margin-bottom: 4px; max-width: 180px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .ref { font-size: 10px; color: #666; margin-bottom: 6px; }
+  svg { display: block; margin: 0 auto; }
+</style>
+</head><body>
+<div class="label">
+  <div class="desc">${descripcion}</div>
+  <div class="ref">${referencia}</div>
+  <div id="barcode"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<script>
+  window.onload = function() {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "bc";
+    document.getElementById("barcode").appendChild(svg);
+    JsBarcode("#bc", "${codigoBarras}", { format: "EAN13", width: 1.5, height: 50, displayValue: true, fontSize: 12 });
+    setTimeout(function() { window.print(); window.close(); }, 500);
+  };
+<\/script>
+</body></html>`);
+  printWindow.document.close();
+}
 
 export default function Articulos() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -113,6 +156,7 @@ export default function Articulos() {
       insertArticuloSchema.extend({
         precioCoste: z.string().default("0"),
         precioVenta: z.string().default("0"),
+        codigoBarras: z.string().nullable().optional(),
       })
     ),
     defaultValues: {
@@ -123,6 +167,7 @@ export default function Articulos() {
       stock: 0,
       stockMinimo: 0,
       categoria: "",
+      codigoBarras: "",
     },
   });
 
@@ -137,6 +182,7 @@ export default function Articulos() {
         stock: articulo.stock ?? 0,
         stockMinimo: articulo.stockMinimo ?? 0,
         categoria: articulo.categoria || "",
+        codigoBarras: articulo.codigoBarras || "",
       });
     } else {
       setEditingArticulo(null);
@@ -148,6 +194,7 @@ export default function Articulos() {
         stock: 0,
         stockMinimo: 0,
         categoria: "",
+        codigoBarras: "",
       });
     }
     setDialogOpen(true);
@@ -381,7 +428,14 @@ export default function Articulos() {
                     <TableRow key={articulo.id} data-testid={`row-articulo-${articulo.id}`}>
                       <TableCell className="font-medium" data-testid={`text-referencia-${articulo.id}`}>
                         <div className="flex flex-col gap-1">
-                          {articulo.referencia}
+                          <div className="flex items-center gap-1.5">
+                            {articulo.referencia}
+                            {articulo.codigoBarras && (
+                              <span title={articulo.codigoBarras}>
+                                <Barcode className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              </span>
+                            )}
+                          </div>
                           {isLowStock(articulo) && (
                             <Badge variant="destructive" className="w-fit text-[10px] px-1 h-4">
                               Stock Bajo
@@ -587,6 +641,70 @@ export default function Articulos() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control as any}
+                name="codigoBarras"
+                render={({ field }) => {
+                  const barcodeVal = (field.value as string) || "";
+                  const isValidBarcode = barcodeVal.length >= 4;
+                  return (
+                    <FormItem>
+                      <FormLabel>Código de Barras (EAN-13)</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input
+                            placeholder="Ej: 2001234567890"
+                            {...field}
+                            value={barcodeVal}
+                            maxLength={50}
+                            data-testid="input-codigo-barras"
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title="Generar EAN-13"
+                          onClick={() => field.onChange(generateEAN13())}
+                          data-testid="button-generar-barcode"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        {isValidBarcode && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title="Imprimir etiqueta"
+                            onClick={() => {
+                              const desc = form.getValues("descripcion") || "Artículo";
+                              const ref = form.getValues("referencia") || "";
+                              printBarcode(barcodeVal, desc, ref);
+                            }}
+                            data-testid="button-imprimir-etiqueta"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      {isValidBarcode && (
+                        <div className="mt-2 p-3 bg-white rounded-md border flex justify-center overflow-hidden">
+                          <BarcodeComponent
+                            value={barcodeVal}
+                            format={barcodeVal.length === 13 && /^\d+$/.test(barcodeVal) ? "EAN13" : "CODE128"}
+                            width={1.5}
+                            height={48}
+                            displayValue={true}
+                            fontSize={11}
+                          />
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
 
               <div className="flex justify-end gap-3">
                 <Button

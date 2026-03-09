@@ -54,8 +54,8 @@ The system uses a modern full-stack architecture. The frontend is built with **R
     - **Calendar & Appointments**: Visual calendar (monthly + weekly view with hourly slots), appointment duration field (30/60/90/120 min), quick "Crear OR" button for confirmed appointments.
     - **Repair Orders (OR)**: Full detail view with work parts (partes de trabajo), item consumptions (recambios), real-time economic totals (MO + parts + IGIC), status change buttons, "Crear Factura" when terminada. Quick "Crear Factura" button from order list. **Reception photos**: up to 5 photos per OR captured with tablet camera (getUserMedia API), stored as base64 in `fotosRecepcion` field — photos are per-OR (not per-vehicle) to maintain historical visit records.
     - **Quotes**: Creation with detailed line items (mano de obra, artículo, otros), real-time totals, buttons to create OR and Invoice from quote.
-    - **Item Catalog**: Reference, stock, pricing, low stock alerts (badge + filter), minimum stock control.
-    - **IGIC Invoicing**: Multiple invoice types, configurable IGIC rates. Printable invoice dialog with company branding. Auto-open with pre-filled data from OR→Factura workflow.
+    - **Item Catalog**: Reference, stock, pricing, low stock alerts (badge + filter), minimum stock control. EAN-13 barcode generation (internal 200-prefix), visual SVG preview, printable label. `codigoBarras` varchar field in DB.
+    - **IGIC Invoicing**: Multiple invoice types, configurable IGIC rates. Printable invoice dialog (`factura-print.tsx`) with company branding. Auto-open with pre-filled data from OR→Factura workflow (URL params `?orId=&clienteId=`).
     - **Payments & Cash Register**: Multiple payment methods, cash reconciliation.
     - **Reports & Statistics**: `/informes` page with 4 tabs: Billing (bar chart, top clients), Orders (donut chart), Clients (KPIs), Inventory (low stock table).
     - **After-Sales CRM**: Automated campaigns, satisfaction surveys.

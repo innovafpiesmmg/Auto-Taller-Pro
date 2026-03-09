@@ -96,131 +96,90 @@ export default function Facturas() {
   const { data: clientes } = useQuery<Cliente[]>({ queryKey: ["/api/clientes"] });
   const { data: empresa } = useQuery<ConfigEmpresa>({ queryKey: ["/api/config/empresa"] });
 
-  // useSearch de wouter detecta cambios en la query string aunque el componente
-  // ya esté montado (al navegar de /ordenes → /facturas?orId=X&clienteId=Y).
   const search = useSearch();
-  // Ref para no procesar dos veces el mismo search string
   const handledSearch = useRef<string>("");
 
-  // ── Auto-abrir desde OR o Presupuesto vía URL params ──────────────────
+  // ── Auto-abrir desde URL params ──────────────────
   useEffect(() => {
-    // Sin parámetros relevantes o ya procesado → salir
-    if (!search || search === handledSearch.current) return;
-    if (!search.includes("orId=") && !search.includes("presupuestoId=")) return;
-    // Esperar a que los clientes estén disponibles
-    if (!clientes) return;
+    if (!search || !clientes) return;
 
     const params = new URLSearchParams(search);
     const orId = params.get("orId");
     const presupuestoId = params.get("presupuestoId");
     const clienteId = params.get("clienteId");
 
-    if (!clienteId) return;
+    if (clienteId && !dialogOpen && !editingFactura && handledSearch.current !== search) {
+      handledSearch.current = search;
+      const cId = parseInt(clienteId);
+      form.setValue("clienteId", cId);
 
-    const cliente = clientes.find(c => c.id === parseInt(clienteId));
-    if (!cliente) return;
+      if (orId) {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    // Marcar como procesado para evitar duplicados
-    handledSearch.current = search;
+        Promise.all([
+          fetch(`/api/ordenes/${orId}`, { headers }).then(r => r.ok ? r.json() : null),
+          fetch(`/api/ordenes/${orId}/partes`, { headers }).then(r => r.ok ? r.json() : []),
+          fetch(`/api/ordenes/${orId}/consumos`, { headers }).then(r => r.ok ? r.json() : []),
+        ]).then(([orden, partes, consumos]) => {
+          const lineasOR: LineaForm[] = [
+            ...partes.map((p: any) => ({
+              tipo: "mano_obra",
+              descripcion: p.descripcion || "Mano de obra",
+              cantidad: parseFloat(p.tiempoEstimado || "1"),
+              precioUnitario: parseFloat(p.precioMO || "45"),
+              igic: 0,
+            })),
+            ...consumos.map((c: any) => ({
+              tipo: "articulo",
+              descripcion: c.articulo?.descripcion || `Artículo #${c.articuloId}`,
+              cantidad: parseFloat(c.cantidad || "1"),
+              precioUnitario: parseFloat(c.precioUnitario || "0"),
+              igic: parseFloat(c.igic || "7"),
+            })),
+          ];
 
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+          if (lineasOR.length === 0 && orden) {
+            lineasOR.push({
+              tipo: "otros",
+              descripcion: `Trabajos OR ${orden.codigo || orId}`,
+              cantidad: 1,
+              precioUnitario: 0,
+              igic: 7,
+            });
+          }
 
-    const newNumero = `F-${Date.now().toString().slice(-6)}`;
-
-    if (orId) {
-      // Cargar OR + partes + consumos en paralelo
-      Promise.all([
-        fetch(`/api/ordenes/${orId}`, { headers }).then(r => r.ok ? r.json() : null),
-        fetch(`/api/ordenes/${orId}/partes`, { headers }).then(r => r.ok ? r.json() : []),
-        fetch(`/api/ordenes/${orId}/consumos`, { headers }).then(r => r.ok ? r.json() : []),
-      ]).then(([orden, partes, consumos]) => {
-        const lineasOR: LineaForm[] = [
-          ...partes.map((p: any) => ({
-            tipo: "mano_obra" as const,
-            descripcion: p.descripcion || "Mano de obra",
-            cantidad: parseFloat(p.tiempoEstimado || "1"),
-            precioUnitario: parseFloat(p.precioMO || "45"),
-            igic: 0,
-          })),
-          ...consumos.map((c: any) => ({
-            tipo: "articulo" as const,
-            descripcion: c.articulo?.descripcion || `Artículo #${c.articuloId}`,
-            cantidad: parseFloat(c.cantidad || "1"),
-            precioUnitario: parseFloat(c.precioUnitario || "0"),
-            igic: parseFloat(c.igic || "7"),
-          })),
-        ];
-
-        // Si la OR no tiene partes ni consumos, añadir línea genérica con el código de la OR
-        if (lineasOR.length === 0 && orden) {
-          lineasOR.push({
-            tipo: "otros" as const,
-            descripcion: `Trabajos OR ${orden.codigo || orId}${orden.observaciones ? ` — ${orden.observaciones}` : ""}`,
-            cantidad: 1,
-            precioUnitario: 0,
-            igic: 7,
-          });
-        }
-
-        const totales = calcTotales(lineasOR);
-        setLineas(lineasOR);
-        setOrigenLabel(`Orden de Reparación ${orden?.codigo || `#${orId}`}`);
-        form.reset({
-          numero: newNumero,
-          serie: "F",
-          tipo: "ordinaria",
-          clienteId: parseInt(clienteId),
-          fecha: new Date(),
-          baseImponible: parseFloat(totales.base.toFixed(2)),
-          totalIgic: parseFloat(totales.igic.toFixed(2)),
-          total: parseFloat(totales.total.toFixed(2)),
-          observaciones: `Factura generada desde OR ${orden?.codigo || `#${orId}`}`,
-          orId: parseInt(orId),
+          setLineas(lineasOR);
+          setOrigenLabel(`Orden de Reparación ${orden?.codigo || `#${orId}`}`);
+          setDialogOpen(true);
         });
-        setDialogOpen(true);
-      }).catch(() => {
-        setLineas([]);
-        form.reset({
-          numero: newNumero, serie: "F", tipo: "ordinaria",
-          clienteId: parseInt(clienteId), fecha: new Date(),
-          baseImponible: 0, totalIgic: 0, total: 0,
-          observaciones: `Factura generada desde OR #${orId}`,
-          orId: parseInt(orId),
-        });
-        setDialogOpen(true);
-      });
+      } else if (presupuestoId) {
+        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    } else if (presupuestoId) {
-      fetch(`/api/presupuestos/${presupuestoId}`, { headers })
-        .then(r => r.ok ? r.json() : null)
-        .then(pres => {
-          const lineasPres: LineaForm[] = pres?.lineas
-            ? JSON.parse(pres.lineas).map((l: any) => ({
-                tipo: (l.tipo || "otros") as "mano_obra" | "articulo" | "otros",
+        fetch(`/api/presupuestos/${presupuestoId}`, { headers })
+          .then(r => r.ok ? r.json() : null)
+          .then(pres => {
+            if (pres?.lineas) {
+              const lineasPres = JSON.parse(pres.lineas).map((l: any) => ({
+                tipo: l.tipo || "otros",
                 descripcion: l.descripcion || "",
                 cantidad: parseFloat(l.cantidad || "1"),
                 precioUnitario: parseFloat(l.precioUnitario || "0"),
                 igic: parseFloat(l.igic || "7"),
-              }))
-            : [];
-
-          const totales = calcTotales(lineasPres);
-          setLineas(lineasPres);
-          setOrigenLabel(`Presupuesto #${presupuestoId}`);
-          form.reset({
-            numero: newNumero, serie: "F", tipo: "ordinaria",
-            clienteId: parseInt(clienteId), fecha: new Date(),
-            baseImponible: parseFloat(totales.base.toFixed(2)),
-            totalIgic: parseFloat(totales.igic.toFixed(2)),
-            total: parseFloat(totales.total.toFixed(2)),
-            observaciones: `Factura generada desde Presupuesto #${presupuestoId}`,
+              }));
+              setLineas(lineasPres);
+            }
+            setOrigenLabel(`Presupuesto #${presupuestoId}`);
+            setDialogOpen(true);
           });
-          setDialogOpen(true);
-        });
+      } else {
+        setDialogOpen(true);
+      }
     }
-  }, [search, clientes]);
+  }, [search, clientes, dialogOpen, editingFactura]);
 
   useEffect(() => { setPage(1); }, [searchTerm]);
 

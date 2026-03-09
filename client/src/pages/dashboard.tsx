@@ -11,10 +11,10 @@ import {
   Clock,
   AlertTriangle
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Cita, OrdenReparacion, Cliente, Vehiculo } from "@shared/schema";
+import type { Cita, OrdenReparacion, Cliente, Vehiculo, Articulo } from "@shared/schema";
 import { format, startOfDay, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -42,13 +42,20 @@ interface DashboardStats {
   ordenesDelMes: number;
   ingresosMensuales: { mes: string; total: number }[];
   articulosBajoStock: number;
+  estadosOrdenes: { estado: string; count: number }[];
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+const COLORS = ["#3b82f6", "#f59e0b", "#22c55e", "#a855f7"];
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats/dashboard"],
+    refetchInterval: 30000,
+  });
+
+  const { data: articulos } = useQuery<Articulo[]>({
+    queryKey: ["/api/articulos"],
     refetchInterval: 30000,
   });
 
@@ -98,23 +105,14 @@ export default function Dashboard() {
   };
 
   const getEstadoData = () => {
-    if (!ordenes) return [];
-    const estados = {
-      abierta: 0,
-      en_curso: 0,
-      terminada: 0,
-      facturada: 0,
-    };
-    ordenes.forEach(o => {
-      if (o.estado in estados) {
-        estados[o.estado as keyof typeof estados]++;
-      }
-    });
-    return Object.entries(estados).map(([name, value]) => ({ 
-      name: name.replace('_', ' ').charAt(0).toUpperCase() + name.replace('_', ' ').slice(1), 
-      value 
+    if (!stats?.estadosOrdenes) return [];
+    return stats.estadosOrdenes.map(item => ({
+      name: item.estado.replace('_', ' ').charAt(0).toUpperCase() + item.estado.replace('_', ' ').slice(1),
+      value: item.count
     }));
   };
+
+  const articulosBajoStockCount = articulos?.filter(a => (a.stock ?? 0) <= (a.stockMinimo ?? 0)).length || 0;
 
   return (
     <div className="space-y-6">
@@ -216,7 +214,11 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-red-200 dark:border-red-900">
+        <Card 
+          className="border-red-200 dark:border-red-900 cursor-pointer hover-elevate"
+          onClick={() => setLocation("/articulos")}
+          data-testid="card-stock-bajo"
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -226,12 +228,10 @@ export default function Dashboard() {
               <Skeleton className="h-8 w-16" />
             ) : (
               <div className="text-2xl font-bold text-red-600" data-testid="text-stock-bajo-kpi">
-                {stats?.articulosBajoStock || 0}
+                {articulosBajoStockCount}
               </div>
             )}
-            <Button asChild variant="ghost" size="sm" className="h-auto p-0 text-xs text-red-600 hover:text-red-700">
-              <Link href="/articulos">Ver artículos</Link>
-            </Button>
+            <p className="text-xs text-red-600">Ver artículos</p>
           </CardContent>
         </Card>
       </div>

@@ -602,7 +602,7 @@ export class DatabaseStorage implements IStorage {
   async updatePresupuesto(id: number, presupuesto: Partial<InsertPresupuesto>): Promise<Presupuesto | undefined> {
     const [updated] = await db
       .update(presupuestos)
-      .set(presupuesto)
+      .set({ ...presupuesto, updatedAt: new Date() })
       .where(eq(presupuestos.id, id))
       .returning();
     return updated || undefined;

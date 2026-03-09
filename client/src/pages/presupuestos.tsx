@@ -405,7 +405,7 @@ export default function Presupuestos() {
                                 variant="ghost" 
                                 size="icon"
                                 title="Crear Factura"
-                                onClick={() => setLocation(`/facturas?presupuestoId=${presupuesto.id}&clienteId=${presupuesto.clienteId}`)}
+                                onClick={() => setLocation(`/facturas?clienteId=${presupuesto.clienteId}`)}
                                 data-testid={`button-crear-factura-${presupuesto.id}`}
                               >
                                 <Receipt className="h-4 w-4" />

@@ -128,6 +128,8 @@ export default function Vehiculos() {
 
   const handleOpenDialog = (vehiculo?: Vehiculo) => {
     setEtiquetaDGT(null); // Reset etiqueta al abrir diálogo
+    setCarapiMakes([]); // Reset CarAPI data
+    setCarapiModels([]);
     if (vehiculo) {
       setEditingVehiculo(vehiculo);
       form.reset({

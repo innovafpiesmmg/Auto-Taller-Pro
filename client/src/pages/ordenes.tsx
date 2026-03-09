@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CamaraFotos } from "@/components/camara-fotos";
-import { Plus, ClipboardList, Calendar, Edit, Trash2, Search, Download } from "lucide-react";
+import { Plus, ClipboardList, Calendar, Edit, Trash2, Search, Download, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -234,8 +234,9 @@ export default function Ordenes() {
 
   const handleExportCSV = () => {
     const dataToExport = filteredOrdenes.map(o => ({
-      codigo: o.codigo,
-      fechaApertura: o.fechaApertura ? format(new Date(o.fechaApertura), 'yyyy-MM-dd') : '',
+      id: o.id,
+      codigo: o.codigo || '',
+      fechaApertura: o.fechaApertura ? new Date(o.fechaApertura).toLocaleDateString('es-ES') : '',
       estado: o.estado,
       kilometrajeEntrada: o.kmEntrada || 0
     }));
@@ -359,11 +360,12 @@ export default function Ordenes() {
                                 {orden.estado === 'terminada' && canManageFacturas && (
                                   <Button 
                                     variant="outline" 
-                                    size="sm" 
+                                    size="icon" 
                                     onClick={() => navigate(`/facturas?orId=${orden.id}&clienteId=${orden.clienteId}`)}
                                     data-testid={`button-crear-factura-orden-${orden.id}`}
+                                    title="Crear Factura"
                                   >
-                                    Crear Factura
+                                    <FileText className="h-4 w-4" />
                                   </Button>
                                 )}
                                 <Button 

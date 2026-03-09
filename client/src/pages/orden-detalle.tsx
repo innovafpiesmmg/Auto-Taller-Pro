@@ -129,7 +129,13 @@ export default function OrdenDetalle() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id, "partes"] });
       toast({ title: "Parte de trabajo añadido" });
-      parteForm.reset();
+      parteForm.reset({
+        descripcion: "",
+        mecanicoId: undefined,
+        tiempoEstimado: "1.00",
+        precioMO: "45.00",
+        completado: false,
+      });
     },
   });
 
@@ -140,7 +146,12 @@ export default function OrdenDetalle() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id, "consumos"] });
       toast({ title: "Consumo añadido" });
-      consumoForm.reset();
+      consumoForm.reset({
+        articuloId: undefined,
+        cantidad: "1.00",
+        precioUnitario: "0.00",
+        igic: "7.00",
+      });
     },
   });
 

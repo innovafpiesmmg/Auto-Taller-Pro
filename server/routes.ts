@@ -822,6 +822,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const articulosBajoStock = articulos.filter(a => (a.stock ?? 0) <= (a.stockMinimo ?? 0)).length;
 
+      // Agrupar órdenes por estado
+      const estadosOrdenes = [
+        { estado: "abierta", count: ordenes.filter(o => o.estado === "abierta").length },
+        { estado: "en_curso", count: ordenes.filter(o => o.estado === "en_curso").length },
+        { estado: "terminada", count: ordenes.filter(o => o.estado === "terminada").length },
+        { estado: "facturada", count: ordenes.filter(o => o.estado === "facturada").length },
+      ];
+
       res.json({
         ordenesAbiertas,
         citasHoy: citasHoy.length,
@@ -837,6 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ordenesRecientes: ordenes.slice(0, 5),
         ingresosMensuales,
         articulosBajoStock,
+        estadosOrdenes,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

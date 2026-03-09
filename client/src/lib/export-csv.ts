@@ -3,7 +3,10 @@ export function exportToCSV(rows: Record<string, any>[], filename: string): void
   const headers = Object.keys(rows[0]);
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => headers.map(h => JSON.stringify(row[h] ?? '')).join(','))
+    ...rows.map(row => headers.map(h => {
+      const val = row[h] ?? '';
+      return JSON.stringify(val);
+    }).join(','))
   ].join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
