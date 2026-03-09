@@ -1008,6 +1008,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/pedidos-compra/lineas/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteLineaPedido(id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Recepciones
   app.get("/api/recepciones", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {

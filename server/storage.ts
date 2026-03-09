@@ -190,6 +190,7 @@ export interface IStorage {
   getLineasPedido(pedidoId: number): Promise<LineaPedido[]>;
   createLineaPedido(linea: InsertLineaPedido): Promise<LineaPedido>;
   updateLineaPedido(id: number, linea: Partial<InsertLineaPedido>): Promise<LineaPedido | undefined>;
+  deleteLineaPedido(id: number): Promise<void>;
   
   // Recepciones
   getRecepciones(): Promise<Recepcion[]>;
@@ -762,6 +763,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(lineasPedido.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async deleteLineaPedido(id: number): Promise<void> {
+    await db.delete(lineasPedido).where(eq(lineasPedido.id, id));
   }
 
   // Recepciones

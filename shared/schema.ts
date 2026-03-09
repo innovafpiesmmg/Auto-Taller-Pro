@@ -288,6 +288,8 @@ export const lineasPedido = pgTable("lineas_pedido", {
   precioUnitario: decimal("precio_unitario", { precision: 10, scale: 2 }).notNull(),
   igic: decimal("igic", { precision: 5, scale: 2 }).default("7.00"),
   importe: decimal("importe", { precision: 10, scale: 2 }).notNull(),
+  estado: varchar("estado", { length: 20 }).notNull().default("pendiente"),
+  fechaPrevistaEntrega: timestamp("fecha_prevista_entrega"),
 });
 
 // Recepciones de Almacén
