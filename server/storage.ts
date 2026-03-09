@@ -188,6 +188,7 @@ export interface IStorage {
   updatePedidoCompra(id: number, pedido: Partial<InsertPedidoCompra>): Promise<PedidoCompra | undefined>;
   deletePedidoCompra(id: number): Promise<void>;
   getLineasPedido(pedidoId: number): Promise<LineaPedido[]>;
+  getLineaPedido(id: number): Promise<LineaPedido | undefined>;
   createLineaPedido(linea: InsertLineaPedido): Promise<LineaPedido>;
   updateLineaPedido(id: number, linea: Partial<InsertLineaPedido>): Promise<LineaPedido | undefined>;
   deleteLineaPedido(id: number): Promise<void>;
@@ -749,6 +750,11 @@ export class DatabaseStorage implements IStorage {
 
   async getLineasPedido(pedidoId: number): Promise<LineaPedido[]> {
     return await db.select().from(lineasPedido).where(eq(lineasPedido.pedidoId, pedidoId));
+  }
+
+  async getLineaPedido(id: number): Promise<LineaPedido | undefined> {
+    const [linea] = await db.select().from(lineasPedido).where(eq(lineasPedido.id, id));
+    return linea || undefined;
   }
 
   async createLineaPedido(linea: InsertLineaPedido): Promise<LineaPedido> {

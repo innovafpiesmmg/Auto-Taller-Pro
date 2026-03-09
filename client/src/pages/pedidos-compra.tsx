@@ -533,7 +533,7 @@ export default function PedidosCompra() {
                 <div><span className="font-medium text-foreground">Entrega estimada: </span>
                   {detailPedido.fechaEntregaEstimada ? format(new Date(detailPedido.fechaEntregaEstimada), "dd/MM/yyyy") : "—"}
                 </div>
-                <div><span className="font-medium text-foreground">Total pedido: </span>{parseFloat(detailPedido.total).toFixed(2)} €</div>
+                <div><span className="font-medium text-foreground">Total pedido: </span>{lineas ? totalLineas.toFixed(2) : parseFloat(detailPedido.total).toFixed(2)} €</div>
               </div>
               {detailPedido.observaciones && <div><span className="font-medium text-foreground">Observaciones: </span>{detailPedido.observaciones}</div>}
             </div>

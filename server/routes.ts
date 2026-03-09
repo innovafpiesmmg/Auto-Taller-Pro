@@ -983,6 +983,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  async function recalcularTotalPedido(pedidoId: number) {
+    const lineas = await storage.getLineasPedido(pedidoId);
+    const total = lineas.reduce((sum, l) => sum + parseFloat(l.importe || "0"), 0).toFixed(2);
+    await storage.updatePedidoCompra(pedidoId, { total });
+  }
+
   app.post("/api/pedidos-compra/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const pedidoId = parseInt(req.params.id);
@@ -994,6 +1000,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const validated = insertLineaPedidoSchema.parse(body);
       const linea = await storage.createLineaPedido(validated);
+      await recalcularTotalPedido(pedidoId);
       res.status(201).json(linea);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1014,6 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!linea) {
         return res.status(404).json({ error: "Línea de pedido no encontrada" });
       }
+      await recalcularTotalPedido(linea.pedidoId);
       res.json(linea);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1023,7 +1031,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/pedidos-compra/lineas/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const linea = await storage.getLineaPedido(id);
       await storage.deleteLineaPedido(id);
+      if (linea) await recalcularTotalPedido(linea.pedidoId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1061,6 +1071,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const validated = insertRecepcionSchema.parse(data);
       const recepcion = await storage.createRecepcion(validated);
+      if (recepcion.pedidoId) {
+        await storage.updatePedidoCompra(recepcion.pedidoId, { estado: "recibido" });
+      }
       res.status(201).json(recepcion);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -1090,8 +1103,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/recepciones/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const recepcionId = parseInt(req.params.id);
-      const validated = insertLineaRecepcionSchema.parse({ ...req.body, recepcionId });
+      const body = { ...req.body, recepcionId };
+      if (body.fechaCaducidad != null) {
+        body.fechaCaducidad = new Date(body.fechaCaducidad);
+      } else {
+        delete body.fechaCaducidad;
+      }
+      const validated = insertLineaRecepcionSchema.parse(body);
       const linea = await storage.createLineaRecepcion(validated);
+      const cantidadRecibida = parseFloat(validated.cantidad as string) || 0;
+      if (cantidadRecibida > 0) {
+        const articulo = await storage.getArticulo(validated.articuloId);
+        if (articulo) {
+          const stockActual = articulo.stock ?? 0;
+          await storage.updateArticulo(validated.articuloId, { stock: stockActual + cantidadRecibida });
+        }
+      }
       res.status(201).json(linea);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
