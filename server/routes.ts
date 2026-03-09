@@ -986,7 +986,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pedidos-compra/:id/lineas", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const pedidoId = parseInt(req.params.id);
-      const validated = insertLineaPedidoSchema.parse({ ...req.body, pedidoId });
+      const body = { ...req.body, pedidoId };
+      if (body.fechaPrevistaEntrega != null) {
+        body.fechaPrevistaEntrega = new Date(body.fechaPrevistaEntrega);
+      } else {
+        delete body.fechaPrevistaEntrega;
+      }
+      const validated = insertLineaPedidoSchema.parse(body);
       const linea = await storage.createLineaPedido(validated);
       res.status(201).json(linea);
     } catch (error: any) {
@@ -997,7 +1003,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/pedidos-compra/lineas/:id", authenticateToken, requireRole("admin", "jefe_taller", "almacen"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validated = insertLineaPedidoSchema.partial().parse(req.body);
+      const body = { ...req.body };
+      if (body.fechaPrevistaEntrega != null) {
+        body.fechaPrevistaEntrega = new Date(body.fechaPrevistaEntrega);
+      } else {
+        delete body.fechaPrevistaEntrega;
+      }
+      const validated = insertLineaPedidoSchema.partial().parse(body);
       const linea = await storage.updateLineaPedido(id, validated);
       if (!linea) {
         return res.status(404).json({ error: "Línea de pedido no encontrada" });

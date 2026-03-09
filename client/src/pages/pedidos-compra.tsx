@@ -164,17 +164,19 @@ export default function PedidosCompra() {
   const createLineaMutation = useMutation({
     mutationFn: (data: LineaFormValues) => {
       const importe = ((parseFloat(data.cantidad) || 0) * (parseFloat(data.precioUnitario) || 0) * (1 + (parseFloat(data.igic) || 0) / 100)).toFixed(2);
+      const body: Record<string, any> = {
+        articuloId: data.articuloId,
+        cantidad: data.cantidad,
+        cantidadRecibida: "0",
+        precioUnitario: data.precioUnitario,
+        igic: data.igic,
+        importe,
+        estado: data.estado,
+      };
+      if (data.fechaPrevistaEntrega) body.fechaPrevistaEntrega = data.fechaPrevistaEntrega;
       return apiRequest(`/api/pedidos-compra/${detailPedido!.id}/lineas`, {
         method: "POST",
-        body: {
-          articuloId: data.articuloId,
-          cantidad: data.cantidad,
-          precioUnitario: data.precioUnitario,
-          igic: data.igic,
-          importe,
-          estado: data.estado,
-          fechaPrevistaEntrega: data.fechaPrevistaEntrega || null,
-        },
+        body,
       });
     },
     onSuccess: () => {
@@ -189,16 +191,17 @@ export default function PedidosCompra() {
   const updateLineaMutation = useMutation({
     mutationFn: (data: LineaFormValues) => {
       const importe = ((parseFloat(data.cantidad) || 0) * (parseFloat(data.precioUnitario) || 0) * (1 + (parseFloat(data.igic) || 0) / 100)).toFixed(2);
+      const body: Record<string, any> = {
+        cantidad: data.cantidad,
+        precioUnitario: data.precioUnitario,
+        igic: data.igic,
+        importe,
+        estado: data.estado,
+      };
+      if (data.fechaPrevistaEntrega) body.fechaPrevistaEntrega = data.fechaPrevistaEntrega;
       return apiRequest(`/api/pedidos-compra/lineas/${editingLinea!.id}`, {
         method: "PUT",
-        body: {
-          cantidad: data.cantidad,
-          precioUnitario: data.precioUnitario,
-          igic: data.igic,
-          importe,
-          estado: data.estado,
-          fechaPrevistaEntrega: data.fechaPrevistaEntrega || null,
-        },
+        body,
       });
     },
     onSuccess: () => {
