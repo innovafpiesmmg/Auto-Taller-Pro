@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -61,56 +62,75 @@ interface ConfigEmpresa {
   updatedAt: string;
 }
 
-const menuItems = [
+interface NavItem {
+  title: string;
+  url: string;
+  icon: ElementType;
+  roles?: string[];
+}
+
+const ALL_ROLES = ["admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"];
+
+const menuItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Agenda & Citas", url: "/citas", icon: Calendar },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Vehículos", url: "/vehiculos", icon: Car },
-  { title: "Órdenes de Reparación", url: "/ordenes", icon: ClipboardList },
-  { title: "Presupuestos", url: "/presupuestos", icon: FileText },
-  { title: "Artículos", url: "/articulos", icon: Package },
-  { title: "Facturación", url: "/facturas", icon: Receipt },
-  { title: "Cobros & Caja", url: "/cobros", icon: Wallet },
-  { title: "Informes & Estadísticas", url: "/informes", icon: BarChart2 },
+  { title: "Agenda & Citas", url: "/citas", icon: Calendar, roles: ["admin", "jefe_taller", "recepcion"] },
+  { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "jefe_taller", "recepcion", "finanzas"] },
+  { title: "Vehículos", url: "/vehiculos", icon: Car, roles: ["admin", "jefe_taller", "recepcion", "mecanico"] },
+  { title: "Órdenes de Reparación", url: "/ordenes", icon: ClipboardList, roles: ["admin", "jefe_taller", "recepcion", "mecanico"] },
+  { title: "Presupuestos", url: "/presupuestos", icon: FileText, roles: ["admin", "jefe_taller", "recepcion"] },
+  { title: "Artículos", url: "/articulos", icon: Package, roles: ["admin", "jefe_taller", "almacen", "mecanico"] },
+  { title: "Facturación", url: "/facturas", icon: Receipt, roles: ["admin", "jefe_taller", "finanzas"] },
+  { title: "Cobros & Caja", url: "/cobros", icon: Wallet, roles: ["admin", "jefe_taller", "finanzas"] },
+  { title: "Informes & Estadísticas", url: "/informes", icon: BarChart2, roles: ["admin", "jefe_taller", "finanzas"] },
 ];
 
-const comprasAlmacenItems = [
-  { title: "Proveedores", url: "/proveedores", icon: Building },
-  { title: "Pedidos de Compra", url: "/pedidos-compra", icon: ShoppingCart },
-  { title: "Recepciones", url: "/recepciones", icon: PackageCheck },
-  { title: "Ubicaciones", url: "/ubicaciones", icon: MapPin },
+const comprasAlmacenItems: NavItem[] = [
+  { title: "Proveedores", url: "/proveedores", icon: Building, roles: ["admin", "jefe_taller", "almacen"] },
+  { title: "Pedidos de Compra", url: "/pedidos-compra", icon: ShoppingCart, roles: ["admin", "jefe_taller", "almacen"] },
+  { title: "Recepciones", url: "/recepciones", icon: PackageCheck, roles: ["admin", "jefe_taller", "almacen"] },
+  { title: "Ubicaciones", url: "/ubicaciones", icon: MapPin, roles: ["admin", "jefe_taller", "almacen"] },
 ];
 
-const crmPostventaItems = [
-  { title: "Campañas", url: "/campanas", icon: Megaphone },
-  { title: "Encuestas", url: "/encuestas", icon: ClipboardListIcon },
-  { title: "Cupones", url: "/cupones", icon: Ticket },
+const crmPostventaItems: NavItem[] = [
+  { title: "Campañas", url: "/campanas", icon: Megaphone, roles: ["admin", "jefe_taller"] },
+  { title: "Encuestas", url: "/encuestas", icon: ClipboardListIcon, roles: ["admin", "jefe_taller"] },
+  { title: "Cupones", url: "/cupones", icon: Ticket, roles: ["admin", "jefe_taller", "recepcion"] },
 ];
 
-const gestionResiduosItems = [
-  { title: "Catálogo de Residuos", url: "/catalogo-residuos", icon: BookOpen },
-  { title: "Contenedores", url: "/contenedores-residuos", icon: Trash2 },
-  { title: "Gestores Autorizados", url: "/gestores-residuos", icon: Truck },
-  { title: "Registros", url: "/registros-residuos", icon: ClipboardList },
-  { title: "Documentos DI", url: "/documentos-di", icon: FileText },
-  { title: "Recogidas", url: "/recogidas-residuos", icon: Recycle },
+const gestionResiduosItems: NavItem[] = [
+  { title: "Catálogo de Residuos", url: "/catalogo-residuos", icon: BookOpen, roles: ["admin", "jefe_taller", "almacen"] },
+  { title: "Contenedores", url: "/contenedores-residuos", icon: Trash2, roles: ["admin", "jefe_taller", "almacen"] },
+  { title: "Gestores Autorizados", url: "/gestores-residuos", icon: Truck, roles: ["admin", "jefe_taller"] },
+  { title: "Registros", url: "/registros-residuos", icon: ClipboardList, roles: ["admin", "jefe_taller", "almacen"] },
+  { title: "Documentos DI", url: "/documentos-di", icon: FileText, roles: ["admin", "jefe_taller"] },
+  { title: "Recogidas", url: "/recogidas-residuos", icon: Recycle, roles: ["admin", "jefe_taller", "almacen"] },
 ];
 
-const configuracionItems = [
-  { title: "Usuarios", url: "/usuarios", icon: Shield },
-  { title: "Configuración", url: "/configuracion", icon: Settings },
+const configuracionItems: NavItem[] = [
+  { title: "Usuarios", url: "/usuarios", icon: Shield, roles: ["admin"] },
+  { title: "Configuración", url: "/configuracion", icon: Settings, roles: ["admin", "jefe_taller"] },
 ];
+
+function hasAccess(item: NavItem, userRoles: string[]): boolean {
+  if (!item.roles) return true;
+  if (userRoles.includes("admin")) return true;
+  return item.roles.some(r => userRoles.includes(r));
+}
 
 interface CollapsibleSectionProps {
   label: string;
-  items: { title: string; url: string; icon: ElementType }[];
+  items: NavItem[];
   location: string;
   defaultOpen?: boolean;
   testIdPrefix?: string;
+  userRoles: string[];
 }
 
-function CollapsibleSection({ label, items, location, defaultOpen = true, testIdPrefix }: CollapsibleSectionProps) {
+function CollapsibleSection({ label, items, location, defaultOpen = true, testIdPrefix, userRoles }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const visibleItems = items.filter(item => hasAccess(item, userRoles));
+
+  if (visibleItems.length === 0) return null;
 
   return (
     <SidebarGroup>
@@ -132,7 +152,7 @@ function CollapsibleSection({ label, items, location, defaultOpen = true, testId
         <CollapsibleContent>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild
@@ -158,6 +178,8 @@ function CollapsibleSection({ label, items, location, defaultOpen = true, testId
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { user } = useAuth();
+  const userRoles = user?.roles || [];
 
   const { data: configEmpresa } = useQuery<ConfigEmpresa | null>({
     queryKey: ["/api/config/empresa"],
@@ -206,6 +228,7 @@ export function AppSidebar() {
           location={location}
           defaultOpen={true}
           testIdPrefix="navegacion"
+          userRoles={userRoles}
         />
         <CollapsibleSection
           label="Compras & Almacén"
@@ -213,6 +236,7 @@ export function AppSidebar() {
           location={location}
           defaultOpen={true}
           testIdPrefix="compras"
+          userRoles={userRoles}
         />
         <CollapsibleSection
           label="CRM Postventa"
@@ -220,6 +244,7 @@ export function AppSidebar() {
           location={location}
           defaultOpen={false}
           testIdPrefix="crm"
+          userRoles={userRoles}
         />
         <CollapsibleSection
           label="Gestión de Residuos"
@@ -227,6 +252,7 @@ export function AppSidebar() {
           location={location}
           defaultOpen={false}
           testIdPrefix="residuos"
+          userRoles={userRoles}
         />
         <CollapsibleSection
           label="Configuración"
@@ -234,6 +260,7 @@ export function AppSidebar() {
           location={location}
           defaultOpen={false}
           testIdPrefix="configuracion"
+          userRoles={userRoles}
         />
       </SidebarContent>
     </Sidebar>
