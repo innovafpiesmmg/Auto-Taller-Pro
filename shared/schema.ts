@@ -854,19 +854,36 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertVehiculoSchema = createInsertSchema(vehiculos).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertCitaSchema = createInsertSchema(citas).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertOrdenReparacionSchema = createInsertSchema(ordenesReparacion).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVehiculoSchema = createInsertSchema(vehiculos).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  itvFecha: z.coerce.date().nullable().optional(),
+});
+export const insertCitaSchema = createInsertSchema(citas).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  fechaHora: z.coerce.date(),
+});
+export const insertOrdenReparacionSchema = createInsertSchema(ordenesReparacion).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  fechaApertura: z.coerce.date().optional(),
+  fechaCierre: z.coerce.date().nullable().optional(),
+});
 export const insertParteTrabajoSchema = createInsertSchema(partesTrabajo).omit({ id: true, createdAt: true });
 export const insertArticuloSchema = createInsertSchema(articulos).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertConsumoArticuloSchema = createInsertSchema(consumosArticulos).omit({ id: true, createdAt: true });
-export const insertPresupuestoSchema = createInsertSchema(presupuestos).omit({ id: true, createdAt: true });
-export const insertFacturaSchema = createInsertSchema(facturas).omit({ id: true, createdAt: true });
+export const insertPresupuestoSchema = createInsertSchema(presupuestos).omit({ id: true, createdAt: true }).extend({
+  fechaAprobacion: z.coerce.date().nullable().optional(),
+});
+export const insertFacturaSchema = createInsertSchema(facturas).omit({ id: true, createdAt: true }).extend({
+  fecha: z.coerce.date().optional(),
+});
 export const insertLineaFacturaSchema = createInsertSchema(lineasFactura).omit({ id: true });
-export const insertCobroSchema = createInsertSchema(cobros).omit({ id: true, createdAt: true });
+export const insertCobroSchema = createInsertSchema(cobros).omit({ id: true, createdAt: true }).extend({
+  fecha: z.coerce.date().optional(),
+});
 export const insertProveedorSchema = createInsertSchema(proveedores).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertPedidoCompraSchema = createInsertSchema(pedidosCompra).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertLineaPedidoSchema = createInsertSchema(lineasPedido).omit({ id: true });
+export const insertPedidoCompraSchema = createInsertSchema(pedidosCompra).omit({ id: true, createdAt: true, updatedAt: true }).extend({
+  fechaEntregaEstimada: z.coerce.date().nullable().optional(),
+});
+export const insertLineaPedidoSchema = createInsertSchema(lineasPedido).omit({ id: true }).extend({
+  fechaPrevistaEntrega: z.coerce.date().nullable().optional(),
+});
 export const insertRecepcionSchema = createInsertSchema(recepciones).omit({ id: true, createdAt: true });
 export const insertLineaRecepcionSchema = createInsertSchema(lineasRecepcion).omit({ id: true });
 export const insertUbicacionSchema = createInsertSchema(ubicaciones).omit({ id: true, createdAt: true });
