@@ -53,6 +53,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { getAuthHeaders } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Factura, Cliente, LineaFactura, ConfigEmpresa } from "@shared/schema";
 import { insertFacturaSchema } from "@shared/schema";
@@ -114,9 +115,7 @@ export default function Facturas() {
       form.setValue("clienteId", cId);
 
       if (orId) {
-        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const headers = { ...getAuthHeaders(), "Content-Type": "application/json" };
 
         Promise.all([
           fetch(`/api/ordenes/${orId}`, { headers }).then(r => r.ok ? r.json() : null),
@@ -155,9 +154,7 @@ export default function Facturas() {
           setDialogOpen(true);
         });
       } else if (presupuestoId) {
-        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const headers = { ...getAuthHeaders(), "Content-Type": "application/json" };
 
         fetch(`/api/presupuestos/${presupuestoId}`, { headers })
           .then(r => r.ok ? r.json() : null)
@@ -258,22 +255,19 @@ export default function Facturas() {
         observaciones: factura.observaciones || "",
       });
       // Cargar líneas existentes si las hay
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      if (token) {
-        fetch(`/api/facturas/${factura.id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then(r => r.ok ? r.json() : null).then(data => {
-          if (data?.lineas?.length) {
-            setLineas(data.lineas.map((l: LineaFactura) => ({
-              tipo: l.tipo,
-              descripcion: l.descripcion,
-              cantidad: parseFloat(l.cantidad.toString()),
-              precioUnitario: parseFloat(l.precioUnitario.toString()),
-              igic: parseFloat(l.igic.toString()),
-            })));
-          }
-        });
-      }
+      fetch(`/api/facturas/${factura.id}`, {
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" }
+      }).then(r => r.ok ? r.json() : null).then(data => {
+        if (data?.lineas?.length) {
+          setLineas(data.lineas.map((l: LineaFactura) => ({
+            tipo: l.tipo,
+            descripcion: l.descripcion,
+            cantidad: parseFloat(l.cantidad.toString()),
+            precioUnitario: parseFloat(l.precioUnitario.toString()),
+            igic: parseFloat(l.igic.toString()),
+          })));
+        }
+      });
     } else {
       setEditingFactura(null);
       form.reset({

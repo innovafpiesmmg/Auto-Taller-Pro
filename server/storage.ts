@@ -1121,7 +1121,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDocumentoDI(documento: InsertDocumentoDI): Promise<DocumentoDI> {
-    const [newDocumento] = await db.insert(documentosDI).values(documento).returning();
+    const numero = documento.numero || await this.nextCode('DI', documentosDI, documentosDI.numero);
+    const [newDocumento] = await db.insert(documentosDI).values({ ...documento, numero }).returning();
     return newDocumento;
   }
 

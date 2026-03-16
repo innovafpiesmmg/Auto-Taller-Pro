@@ -46,6 +46,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -224,23 +225,32 @@ export default function DocumentosDI() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="numero"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número DI</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          data-testid="input-numero-di"
-                          placeholder="DI-2025-001"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {editingDocumento && (
+                  <div className="text-sm text-muted-foreground font-mono bg-muted px-3 py-2 rounded-md">
+                    Documento: <span className="font-semibold text-foreground">{editingDocumento.numero}</span>
+                  </div>
+                )}
+                {!editingDocumento && (
+                  <FormField
+                    control={form.control}
+                    name="numero"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número DI <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value ?? ""}
+                            data-testid="input-numero-di"
+                            placeholder="Déjalo vacío para auto-generar (DI-YYYY-NNNN)"
+                          />
+                        </FormControl>
+                        <FormDescription>Si lo dejas vacío, se generará automáticamente.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}

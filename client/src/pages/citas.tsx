@@ -157,8 +157,7 @@ export default function Citas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const res = await apiRequest("/api/citas", { method: "POST", body: JSON.stringify(data) });
-      return res.json();
+      return await apiRequest("/api/citas", { method: "POST", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/citas"] });
@@ -180,8 +179,7 @@ export default function Citas() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const res = await apiRequest(`/api/citas/${editingCita?.id}`, { method: "PUT", body: JSON.stringify(data) });
-      return res.json();
+      return await apiRequest(`/api/citas/${editingCita?.id}`, { method: "PUT", body: JSON.stringify(data) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/citas"] });
@@ -225,19 +223,17 @@ export default function Citas() {
 
   const createORMutation = useMutation({
     mutationFn: async (cita: Cita) => {
-      const res = await apiRequest("/api/ordenes", {
+      return await apiRequest("/api/ordenes", {
         method: "POST",
-        body: JSON.stringify({
-          codigo: `OR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        body: {
           clienteId: cita.clienteId,
           vehiculoId: cita.vehiculoId,
           citaId: cita.id,
           estado: "abierta",
           fechaApertura: new Date(),
           kmEntrada: 0
-        })
+        }
       });
-      return res.json();
     },
     onSuccess: (data) => {
       toast({
