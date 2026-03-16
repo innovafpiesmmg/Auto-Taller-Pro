@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -97,7 +97,7 @@ export default function PedidosCompra() {
   const pedidoForm = useForm<PedidoFormValues>({
     resolver: zodResolver(pedidoFormSchema),
     defaultValues: {
-      numero: "", proveedorId: undefined, fecha: new Date(),
+      proveedorId: undefined, fecha: new Date(),
       fechaEntregaEstimada: undefined, estado: "pendiente", total: "0", observaciones: "",
     },
   });
@@ -218,7 +218,6 @@ export default function PedidosCompra() {
   const handleEditPedido = (pedido: PedidoCompra) => {
     setEditingPedido(pedido);
     pedidoForm.reset({
-      numero: pedido.numero,
       proveedorId: pedido.proveedorId,
       fecha: new Date(pedido.fecha),
       fechaEntregaEstimada: pedido.fechaEntregaEstimada ? new Date(pedido.fechaEntregaEstimada) : undefined,
@@ -394,18 +393,16 @@ export default function PedidosCompra() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingPedido ? "Editar Pedido" : "Nuevo Pedido"}</DialogTitle>
+            <DialogDescription>
+              {editingPedido
+                ? <span>Número: <span className="font-mono font-semibold">{editingPedido.numero}</span></span>
+                : "El número de pedido se generará automáticamente al guardar."}
+            </DialogDescription>
           </DialogHeader>
           <Form {...pedidoForm}>
             <form onSubmit={pedidoForm.handleSubmit((d) => editingPedido ? updatePedidoMutation.mutate(d) : createPedidoMutation.mutate(d))}
               className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <FormField control={pedidoForm.control} name="numero" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número de Pedido *</FormLabel>
-                    <FormControl><Input {...field} data-testid="input-numero" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
                 <FormField control={pedidoForm.control} name="proveedorId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Proveedor *</FormLabel>

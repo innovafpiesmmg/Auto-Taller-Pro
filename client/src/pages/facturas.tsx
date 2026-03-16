@@ -237,7 +237,7 @@ export default function Facturas() {
       clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
     })),
     defaultValues: {
-      numero: "", serie: "F", tipo: "ordinaria",
+      serie: "F", tipo: "ordinaria",
       clienteId: undefined, fecha: new Date(),
       baseImponible: 0, totalIgic: 0, total: 0, observaciones: "",
     },
@@ -249,7 +249,7 @@ export default function Facturas() {
     if (factura) {
       setEditingFactura(factura);
       form.reset({
-        numero: factura.numero, serie: factura.serie, tipo: factura.tipo,
+        serie: factura.serie, tipo: factura.tipo,
         clienteId: factura.clienteId,
         fecha: factura.fecha ? new Date(factura.fecha) : new Date(),
         baseImponible: Number(factura.baseImponible),
@@ -277,7 +277,6 @@ export default function Facturas() {
     } else {
       setEditingFactura(null);
       form.reset({
-        numero: `F-${Date.now().toString().slice(-6)}`,
         serie: "F", tipo: "ordinaria", clienteId: undefined,
         fecha: new Date(), baseImponible: 0, totalIgic: 0, total: 0, observaciones: "",
       });
@@ -537,9 +536,11 @@ export default function Facturas() {
           <DialogHeader>
             <DialogTitle>{editingFactura ? "Editar Factura" : "Nueva Factura"}</DialogTitle>
             <DialogDescription>
-              {origenLabel
-                ? `Datos pre-rellenados desde ${origenLabel}. Revisa las líneas antes de guardar.`
-                : editingFactura ? "Modifica los datos de la factura" : "Completa el formulario para crear una nueva factura"}
+              {editingFactura
+                ? <span>Factura: <span className="font-mono font-semibold" data-testid="text-numero-factura">{editingFactura.numero}</span>{origenLabel ? ` · ${origenLabel}` : ""}</span>
+                : origenLabel
+                  ? `Datos pre-rellenados desde ${origenLabel}. Revisa las líneas antes de guardar.`
+                  : "El número de factura se generará automáticamente al guardar."}
             </DialogDescription>
           </DialogHeader>
 
@@ -547,14 +548,7 @@ export default function Facturas() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 
               {/* Cabecera de factura */}
-              <div className="grid grid-cols-3 gap-4">
-                <FormField control={form.control} name="numero" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número</FormLabel>
-                    <FormControl><Input placeholder="F-001" {...field} data-testid="input-numero" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+              <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="serie" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Serie</FormLabel>

@@ -116,7 +116,6 @@ export default function Presupuestos() {
       totalIgic: z.union([z.string(), z.number()]),
     })),
     defaultValues: {
-      codigo: "",
       clienteId: undefined,
       vehiculoId: undefined,
       fecha: new Date(),
@@ -154,7 +153,6 @@ export default function Presupuestos() {
         console.error("Error parsing budget lines", e);
       }
       form.reset({
-        codigo: presupuesto.codigo,
         clienteId: presupuesto.clienteId,
         vehiculoId: presupuesto.vehiculoId,
         fecha: presupuesto.fecha ? new Date(presupuesto.fecha) : new Date(),
@@ -166,9 +164,7 @@ export default function Presupuestos() {
       });
     } else {
       setEditingPresupuesto(null);
-      const newCodigo = `PRE-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       form.reset({
-        codigo: newCodigo,
         clienteId: undefined,
         vehiculoId: undefined,
         fecha: new Date(),
@@ -444,28 +440,15 @@ export default function Presupuestos() {
           <DialogHeader>
             <DialogTitle>{editingPresupuesto ? "Editar Presupuesto" : "Nuevo Presupuesto"}</DialogTitle>
             <DialogDescription>
-              {editingPresupuesto ? "Modifica los datos del presupuesto" : "Completa el formulario para crear un nuevo presupuesto"}
+              {editingPresupuesto
+                ? <span>Código: <span className="font-mono font-semibold" data-testid="text-codigo-pre">{editingPresupuesto.codigo}</span></span>
+                : "El código de presupuesto se generará automáticamente al guardar."}
             </DialogDescription>
           </DialogHeader>
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="codigo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Código</FormLabel>
-                      <FormControl>
-                        <Input placeholder="PRE-001" {...field} data-testid="input-codigo" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
+              <FormField
                   control={form.control}
                   name="fecha"
                   render={({ field }) => (
@@ -484,7 +467,6 @@ export default function Presupuestos() {
                     </FormItem>
                   )}
                 />
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField

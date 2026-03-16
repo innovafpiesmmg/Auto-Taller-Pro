@@ -19,6 +19,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormDescription,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
@@ -520,10 +521,11 @@ export default function Articulos() {
                   name="referencia"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Referencia</FormLabel>
+                      <FormLabel>Referencia <span className="text-muted-foreground font-normal">(opcional)</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="REF-001" {...field} data-testid="input-referencia" />
+                        <Input placeholder="Déjalo vacío para auto-generar (ART-XXXX)" {...field} value={field.value ?? ""} data-testid="input-referencia" />
                       </FormControl>
+                      <FormDescription>Si lo dejas en blanco se asignará automáticamente.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

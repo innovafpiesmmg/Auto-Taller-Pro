@@ -296,6 +296,31 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Helper: genera código secuencial con año, ej: OR-2025-0001
+  private async nextCode(prefix: string, table: any, codeField: any): Promise<string> {
+    const year = new Date().getFullYear();
+    const fullPrefix = `${prefix}-${year}-`;
+    const [result] = await db
+      .select({ maxCode: sql<string>`MAX(${codeField})` })
+      .from(table)
+      .where(sql`${codeField} LIKE ${fullPrefix + '%'}`);
+    if (!result?.maxCode) return `${fullPrefix}0001`;
+    const lastNum = parseInt(result.maxCode.slice(-4)) || 0;
+    return `${fullPrefix}${String(lastNum + 1).padStart(4, '0')}`;
+  }
+
+  // Helper: genera referencia de artículo sin año, ej: ART-0001
+  private async nextArticuloRef(): Promise<string> {
+    const prefix = 'ART-';
+    const [result] = await db
+      .select({ maxRef: sql<string>`MAX(${articulos.referencia})` })
+      .from(articulos)
+      .where(sql`${articulos.referencia} LIKE ${'ART-%'}`);
+    if (!result?.maxRef) return 'ART-0001';
+    const lastNum = parseInt(result.maxRef.slice(4)) || 0;
+    return `${prefix}${String(lastNum + 1).padStart(4, '0')}`;
+  }
+
   // Users
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -510,7 +535,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrdenReparacion(or: InsertOrdenReparacion): Promise<OrdenReparacion> {
-    const [newOr] = await db.insert(ordenesReparacion).values(or).returning();
+    const codigo = or.codigo || await this.nextCode('OR', ordenesReparacion, ordenesReparacion.codigo);
+    const [newOr] = await db.insert(ordenesReparacion).values({ ...or, codigo }).returning();
     return newOr;
   }
 
@@ -557,7 +583,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArticulo(articulo: InsertArticulo): Promise<Articulo> {
-    const [newArticulo] = await db.insert(articulos).values(articulo).returning();
+    const referencia = articulo.referencia || await this.nextArticuloRef();
+    const [newArticulo] = await db.insert(articulos).values({ ...articulo, referencia }).returning();
     return newArticulo;
   }
 
@@ -595,7 +622,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPresupuesto(presupuesto: InsertPresupuesto): Promise<Presupuesto> {
-    const [newPresupuesto] = await db.insert(presupuestos).values(presupuesto).returning();
+    const codigo = presupuesto.codigo || await this.nextCode('PRE', presupuestos, presupuestos.codigo);
+    const [newPresupuesto] = await db.insert(presupuestos).values({ ...presupuesto, codigo }).returning();
     return newPresupuesto;
   }
 
@@ -623,7 +651,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFactura(factura: InsertFactura): Promise<Factura> {
-    const [newFactura] = await db.insert(facturas).values(factura).returning();
+    const numero = factura.numero || await this.nextCode('FAC', facturas, facturas.numero);
+    const [newFactura] = await db.insert(facturas).values({ ...factura, numero }).returning();
     return newFactura;
   }
 
@@ -731,7 +760,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPedidoCompra(pedido: InsertPedidoCompra): Promise<PedidoCompra> {
-    const [newPedido] = await db.insert(pedidosCompra).values(pedido).returning();
+    const numero = pedido.numero || await this.nextCode('PC', pedidosCompra, pedidosCompra.numero);
+    const [newPedido] = await db.insert(pedidosCompra).values({ ...pedido, numero }).returning();
     return newPedido;
   }
 
@@ -786,7 +816,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createRecepcion(recepcion: InsertRecepcion): Promise<Recepcion> {
-    const [newRecepcion] = await db.insert(recepciones).values(recepcion).returning();
+    const numero = recepcion.numero || await this.nextCode('REC', recepciones, recepciones.numero);
+    const [newRecepcion] = await db.insert(recepciones).values({ ...recepcion, numero }).returning();
     return newRecepcion;
   }
 

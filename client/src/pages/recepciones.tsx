@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -84,7 +85,6 @@ export default function Recepciones() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      numero: "",
       pedidoId: undefined,
       proveedorId: undefined,
       fecha: new Date(),
@@ -170,7 +170,6 @@ export default function Recepciones() {
   const handleEdit = (recepcion: Recepcion) => {
     setEditingRecepcion(recepcion);
     form.reset({
-      numero: recepcion.numero,
       pedidoId: recepcion.pedidoId ?? undefined,
       proveedorId: recepcion.proveedorId,
       fecha: new Date(recepcion.fecha),
@@ -354,25 +353,16 @@ export default function Recepciones() {
             <DialogTitle>
               {editingRecepcion ? 'Editar Recepción' : 'Nueva Recepción'}
             </DialogTitle>
+            <DialogDescription>
+              {editingRecepcion
+                ? <span>Número: <span className="font-mono font-semibold">{editingRecepcion.numero}</span></span>
+                : "El número de recepción se generará automáticamente al guardar."}
+            </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="numero"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número de Recepción*</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-numero" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <FormField
                   control={form.control}
                   name="fecha"

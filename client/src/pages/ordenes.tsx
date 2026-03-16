@@ -124,7 +124,6 @@ export default function Ordenes() {
       vehiculoId: z.number().int().min(1, "Debe seleccionar un vehículo"),
     })),
     defaultValues: {
-      codigo: "",
       clienteId: undefined,
       vehiculoId: undefined,
       fechaApertura: new Date(),
@@ -138,7 +137,6 @@ export default function Ordenes() {
     if (orden) {
       setEditingOrden(orden);
       form.reset({
-        codigo: orden.codigo,
         clienteId: orden.clienteId,
         vehiculoId: orden.vehiculoId,
         fechaApertura: orden.fechaApertura ? new Date(orden.fechaApertura) : new Date(),
@@ -151,9 +149,7 @@ export default function Ordenes() {
       } catch { setFotos([]); }
     } else {
       setEditingOrden(null);
-      const newCodigo = `OR-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       form.reset({
-        codigo: newCodigo,
         clienteId: undefined,
         vehiculoId: undefined,
         fechaApertura: new Date(),
@@ -419,7 +415,9 @@ export default function Ordenes() {
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle>{editingOrden ? "Editar Orden de Reparación" : "Nueva Orden de Reparación"}</DialogTitle>
             <DialogDescription>
-              {editingOrden ? "Modifica los datos de la orden" : "Completa el formulario para crear una nueva orden"}
+              {editingOrden
+                ? <span>Código: <span className="font-mono font-semibold" data-testid="text-codigo-or">{editingOrden.codigo}</span></span>
+                : "El código OR se generará automáticamente al guardar."}
             </DialogDescription>
           </DialogHeader>
           
@@ -427,22 +425,7 @@ export default function Ordenes() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 min-h-0">
               <ScrollArea className="flex-1 px-6">
                 <div className="space-y-4 pb-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="codigo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Código OR</FormLabel>
-                      <FormControl>
-                        <Input placeholder="OR-123456" {...field} data-testid="input-codigo" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
+              <FormField
                   control={form.control}
                   name="estado"
                   render={({ field }) => (
@@ -466,7 +449,6 @@ export default function Ordenes() {
                     </FormItem>
                   )}
                 />
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
