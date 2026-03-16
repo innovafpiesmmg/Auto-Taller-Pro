@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Car, Edit, Trash2, Leaf, Scan, Loader2, Download } from "lucide-react";
+import { Plus, Search, Car, Edit, Trash2, Leaf, Scan, Loader2, Download, ChevronsUpDown, Check, PenLine, List } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -39,6 +39,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -60,6 +74,36 @@ import { exportToCSV } from "@/lib/export-csv";
 
 type FormValues = z.infer<typeof insertVehiculoSchema>;
 
+// Lista completa de marcas de vehículos
+const VEHICLE_MAKES = [
+  // Turismos y SUV - europeas
+  "Alfa Romeo", "Alpine", "Aston Martin", "Audi", "Bentley", "BMW", "Bugatti",
+  "Citroën", "Cupra", "Dacia", "DS", "Ferrari", "Fiat", "Lamborghini", "Lancia",
+  "Land Rover", "Lotus", "Maserati", "McLaren", "Mercedes-Benz", "MINI", "Opel",
+  "Peugeot", "Porsche", "Renault", "Rolls-Royce", "SEAT", "Škoda", "Smart",
+  "Vauxhall", "Volkswagen", "Volvo",
+  // Turismos y SUV - americanas
+  "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge", "Ford", "GMC",
+  "Hummer", "Jeep", "Lincoln", "RAM", "Tesla",
+  // Turismos y SUV - asiáticas
+  "Acura", "BYD", "Daihatsu", "Genesis", "Great Wall", "Haval", "Honda",
+  "Hyundai", "Infiniti", "Isuzu", "Jaguar", "Kia", "Lexus", "Lynk & Co",
+  "Mazda", "MG", "Mitsubishi", "Nissan", "NIO", "Subaru", "Suzuki",
+  "SsangYong", "Toyota",
+  // Vehículos comerciales y furgonetas
+  "Citroën Berlingo", "Ford Transit", "Mercedes-Benz Sprinter", "Nissan Interstar",
+  "Opel Movano", "Peugeot Boxer", "Renault Trafic", "Volkswagen Transporter",
+  // Camiones y vehículos industriales
+  "DAF", "Iveco", "MAN", "Mercedes-Benz Trucks", "Renault Trucks", "Scania",
+  "Volvo Trucks",
+  // Motos y ciclomotores
+  "Aprilia", "BMW Motorrad", "Ducati", "Harley-Davidson", "Honda Moto",
+  "Kawasaki", "KTM", "Kymco", "Piaggio", "Royal Enfield", "Suzuki Moto",
+  "SYM", "Triumph", "Vespa", "Yamaha",
+  // Cuadriciclos y vehículos especiales
+  "Chatenet", "Ligier", "Microcar",
+].sort((a, b) => a.localeCompare(b, "es"));
+
 export default function Vehiculos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
@@ -76,6 +120,8 @@ export default function Vehiculos() {
   const [isDecodingVin, setIsDecodingVin] = useState(false);
   const [isLoadingMakes, setIsLoadingMakes] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [marcaOpen, setMarcaOpen] = useState(false);
+  const [marcaManual, setMarcaManual] = useState(false);
   const { toast } = useToast();
 
   const { data: vehiculos, isLoading } = useQuery<Vehiculo[]>({
@@ -127,9 +173,11 @@ export default function Vehiculos() {
   });
 
   const handleOpenDialog = (vehiculo?: Vehiculo) => {
-    setEtiquetaDGT(null); // Reset etiqueta al abrir diálogo
-    setCarapiMakes([]); // Reset CarAPI data
+    setEtiquetaDGT(null);
+    setCarapiMakes([]);
     setCarapiModels([]);
+    setMarcaOpen(false);
+    setMarcaManual(false);
     if (vehiculo) {
       setEditingVehiculo(vehiculo);
       form.reset({
@@ -693,28 +741,89 @@ export default function Vehiculos() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Marca *</FormLabel>
-                      {carapiMakes.length > 0 ? (
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
-                        >
+                      {marcaManual ? (
+                        <div className="flex gap-2">
                           <FormControl>
-                            <SelectTrigger data-testid="select-marca">
-                              <SelectValue placeholder="Selecciona marca" />
-                            </SelectTrigger>
+                            <Input
+                              {...field}
+                              placeholder="Escribe la marca"
+                              data-testid="input-marca-manual"
+                              autoFocus
+                            />
                           </FormControl>
-                          <SelectContent>
-                            {carapiMakes.map((make) => (
-                              <SelectItem key={make.id} value={make.name}>
-                                {make.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title="Volver a la lista de marcas"
+                            onClick={() => setMarcaManual(false)}
+                            data-testid="button-marca-lista"
+                          >
+                            <List className="h-4 w-4" />
+                          </Button>
+                        </div>
                       ) : (
-                        <FormControl>
-                          <Input {...field} placeholder="Toyota" data-testid="input-marca" />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <Popover open={marcaOpen} onOpenChange={setMarcaOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={marcaOpen}
+                                  className="w-full justify-between font-normal"
+                                  data-testid="select-marca"
+                                >
+                                  <span className={field.value ? "" : "text-muted-foreground"}>
+                                    {field.value || "Selecciona una marca"}
+                                  </span>
+                                  <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Buscar marca..." data-testid="input-marca-search" />
+                                <CommandList>
+                                  <CommandEmpty>No se encontró la marca.</CommandEmpty>
+                                  <CommandGroup>
+                                    {VEHICLE_MAKES.map((make) => (
+                                      <CommandItem
+                                        key={make}
+                                        value={make}
+                                        onSelect={(val) => {
+                                          const original = VEHICLE_MAKES.find(
+                                            m => m.toLowerCase() === val.toLowerCase()
+                                          );
+                                          field.onChange(original ?? val);
+                                          setMarcaOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={`mr-2 h-4 w-4 ${field.value === make ? "opacity-100" : "opacity-0"}`}
+                                        />
+                                        {make}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                  <CommandSeparator />
+                                  <CommandGroup>
+                                    <CommandItem
+                                      onSelect={() => {
+                                        setMarcaOpen(false);
+                                        setMarcaManual(true);
+                                      }}
+                                      data-testid="button-marca-manual"
+                                    >
+                                      <PenLine className="mr-2 h-4 w-4" />
+                                      Introducir manualmente
+                                    </CommandItem>
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       )}
                       <FormMessage />
                     </FormItem>
