@@ -95,7 +95,7 @@ import {
   type InsertConfigEmpresa,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, like, or } from "drizzle-orm";
+import { eq, desc, and, sql, like, or, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -139,6 +139,7 @@ export interface IStorage {
   // Partes de Trabajo
   getPartesTrabajo(orId: number): Promise<ParteTrabajo[]>;
   createParteTrabajo(parte: InsertParteTrabajo): Promise<ParteTrabajo>;
+  deleteParteTrabajo(id: number): Promise<void>;
   
   // Artículos
   getArticulos(search?: string): Promise<Articulo[]>;
@@ -148,8 +149,9 @@ export interface IStorage {
   deleteArticulo(id: number): Promise<void>;
   
   // Consumos
-  getConsumosArticulos(orId: number): Promise<ConsumoArticulo[]>;
+  getConsumosArticulos(orId: number): Promise<(ConsumoArticulo & { articulo?: Articulo })[]>;
   createConsumoArticulo(consumo: InsertConsumoArticulo): Promise<ConsumoArticulo>;
+  deleteConsumoArticulo(id: number): Promise<void>;
   
   // Presupuestos
   getPresupuestos(): Promise<Presupuesto[]>;
@@ -563,6 +565,10 @@ export class DatabaseStorage implements IStorage {
     return newParte;
   }
 
+  async deleteParteTrabajo(id: number): Promise<void> {
+    await db.delete(partesTrabajo).where(eq(partesTrabajo.id, id));
+  }
+
   // Artículos
   async getArticulos(search?: string): Promise<Articulo[]> {
     if (search) {
@@ -602,13 +608,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Consumos
-  async getConsumosArticulos(orId: number): Promise<ConsumoArticulo[]> {
-    return await db.select().from(consumosArticulos).where(eq(consumosArticulos.orId, orId));
+  async getConsumosArticulos(orId: number): Promise<(ConsumoArticulo & { articulo?: Articulo })[]> {
+    const consumos = await db.select().from(consumosArticulos).where(eq(consumosArticulos.orId, orId));
+    if (consumos.length === 0) return [];
+    const articuloIds = [...new Set(consumos.map(c => c.articuloId).filter(Boolean))] as number[];
+    if (articuloIds.length === 0) return consumos;
+    const arts = await db.select().from(articulos).where(inArray(articulos.id, articuloIds));
+    return consumos.map(c => ({
+      ...c,
+      articulo: arts.find(a => a.id === c.articuloId) || undefined,
+    }));
   }
 
   async createConsumoArticulo(consumo: InsertConsumoArticulo): Promise<ConsumoArticulo> {
     const [newConsumo] = await db.insert(consumosArticulos).values(consumo).returning();
     return newConsumo;
+  }
+
+  async deleteConsumoArticulo(id: number): Promise<void> {
+    await db.delete(consumosArticulos).where(eq(consumosArticulos.id, id));
   }
 
   // Presupuestos

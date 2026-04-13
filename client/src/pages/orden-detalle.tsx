@@ -20,6 +20,11 @@ import {
   CheckCircle,
   Printer,
   ClipboardCheck,
+  Trash2,
+  Save,
+  PauseCircle,
+  StickyNote,
+  Gauge,
 } from "lucide-react";
 import {
   Select,
@@ -44,6 +49,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RecepcionChecklist } from "@/components/recepcion-checklist";
@@ -60,7 +66,7 @@ import {
   type Articulo,
   type User,
 } from "@shared/schema";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -88,6 +94,9 @@ export default function OrdenDetalle() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [printOpen, setPrintOpen] = useState(false);
+  const [obsValue, setObsValue] = useState<string>("");
+  const [obsEditing, setObsEditing] = useState(false);
+  const [kmSalidaValue, setKmSalidaValue] = useState<string>("");
 
   const { data: orden, isLoading: isLoadingOrden } = useQuery<OrdenConDatos>({
     queryKey: ["/api/ordenes", id],
@@ -188,6 +197,40 @@ export default function OrdenDetalle() {
     },
   });
 
+  const deleteParteMutation = useMutation({
+    mutationFn: async (parteId: number) => {
+      return apiRequest(`/api/ordenes/${id}/partes/${parteId}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id, "partes"] });
+      toast({ title: "Parte de trabajo eliminada" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar parte",
+        description: error.message || "No se pudo eliminar la parte.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteConsumoMutation = useMutation({
+    mutationFn: async (consumoId: number) => {
+      return apiRequest(`/api/ordenes/${id}/consumos/${consumoId}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id, "consumos"] });
+      toast({ title: "Recambio eliminado" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar recambio",
+        description: error.message || "No se pudo eliminar el recambio.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const parteForm = useForm({
     resolver: zodResolver(insertParteTrabajoSchema.omit({ orId: true })),
     defaultValues: {
@@ -236,6 +279,26 @@ export default function OrdenDetalle() {
 
   const handleSaveFotos = (fotos: string[]) => {
     updateOrden({ fotosRecepcion: JSON.stringify(fotos) });
+  };
+
+  // Sync inline editable fields when orden loads
+  const prevOrdenId = useRef<number | null>(null);
+  if (orden && orden.id !== prevOrdenId.current) {
+    prevOrdenId.current = orden.id;
+    setObsValue(orden.observaciones ?? "");
+    setKmSalidaValue(orden.kmSalida != null ? String(orden.kmSalida) : "");
+  }
+
+  const handleSaveObs = () => {
+    updateOrden({ observaciones: obsValue }, {
+      onSuccess: () => toast({ title: "Observaciones guardadas" }),
+    });
+    setObsEditing(false);
+  };
+
+  const handleSaveKmSalida = () => {
+    const km = kmSalidaValue !== "" ? parseInt(kmSalidaValue, 10) : null;
+    updateOrden({ kmSalida: km });
   };
 
   const handleCreateFactura = () => {
@@ -429,6 +492,7 @@ export default function OrdenDetalle() {
             {[
               { estado: "abierta", label: "Abierta", icon: <Clock className="mr-2 h-4 w-4" /> },
               { estado: "en_curso", label: "En Curso", icon: <PlayCircle className="mr-2 h-4 w-4" /> },
+              { estado: "a_la_espera", label: "A la espera", icon: <PauseCircle className="mr-2 h-4 w-4" /> },
               { estado: "terminada", label: "Terminada", icon: <CheckCircle className="mr-2 h-4 w-4" /> },
             ].map(({ estado, label, icon }) => (
               <Button
@@ -455,6 +519,83 @@ export default function OrdenDetalle() {
         </CardContent>
       </Card>
 
+      {/* ── SECCIÓN 3b: OBSERVACIONES Y KM SALIDA ─────────────────────────── */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <StickyNote className="h-4 w-4" />
+              Observaciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {obsEditing ? (
+              <div className="flex flex-col gap-2">
+                <Textarea
+                  value={obsValue}
+                  onChange={e => setObsValue(e.target.value)}
+                  rows={3}
+                  placeholder="Observaciones del cliente o del técnico..."
+                  data-testid="textarea-observaciones"
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveObs} disabled={updateOrdenMutation.isPending} data-testid="button-save-observaciones">
+                    <Save className="h-3 w-3 mr-1" />
+                    Guardar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setObsEditing(false); setObsValue(orden.observaciones ?? ""); }}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="text-sm cursor-pointer hover-elevate rounded-md p-2 min-h-[60px] whitespace-pre-wrap"
+                onClick={() => setObsEditing(true)}
+                data-testid="text-observaciones"
+              >
+                {obsValue || <span className="text-muted-foreground italic">Sin observaciones — pulsa para editar</span>}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Gauge className="h-4 w-4" />
+              Km de Salida
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min="0"
+                value={kmSalidaValue}
+                onChange={e => setKmSalidaValue(e.target.value)}
+                placeholder="Kilómetros al entregar"
+                className="max-w-[200px]"
+                data-testid="input-km-salida"
+                onBlur={handleSaveKmSalida}
+              />
+              <Button size="sm" variant="outline" onClick={handleSaveKmSalida} disabled={updateOrdenMutation.isPending} data-testid="button-save-km-salida">
+                <Save className="h-3 w-3 mr-1" />
+                Guardar
+              </Button>
+            </div>
+            {orden.kmEntrada && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Km entrada: {Number(orden.kmEntrada).toLocaleString("es-ES")}
+                {kmSalidaValue && Number(kmSalidaValue) > Number(orden.kmEntrada) && (
+                  <> · Recorrido: {(Number(kmSalidaValue) - Number(orden.kmEntrada)).toLocaleString("es-ES")} km</>
+                )}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* ── SECCIÓN 4: PARTES DE TRABAJO ─────────────────────────────────── */}
       <Card>
         <CardHeader>
@@ -474,6 +615,7 @@ export default function OrdenDetalle() {
                   <TableHead className="text-right">€/h</TableHead>
                   <TableHead className="text-right">Subtotal</TableHead>
                   <TableHead className="text-center">Estado</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -491,12 +633,23 @@ export default function OrdenDetalle() {
                           ? <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
                           : <Clock className="h-4 w-4 text-amber-500 mx-auto" />}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          disabled={deleteParteMutation.isPending}
+                          onClick={() => deleteParteMutation.mutate(parte.id)}
+                          data-testid={`button-delete-parte-${parte.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {(!partes || partes.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                       No hay partes de trabajo registrados
                     </TableCell>
                   </TableRow>
@@ -510,7 +663,7 @@ export default function OrdenDetalle() {
             <Form {...parteForm}>
               <form
                 onSubmit={parteForm.handleSubmit((data) => addParteMutation.mutate(data))}
-                className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
+                className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end"
               >
                 <FormField control={parteForm.control} name="descripcion" render={({ field }) => (
                   <FormItem className="md:col-span-2">
@@ -541,7 +694,15 @@ export default function OrdenDetalle() {
                   <FormItem>
                     <FormLabel>Horas</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.25" {...field} data-testid="input-parte-horas" />
+                      <Input type="number" step="0.25" min="0" {...field} data-testid="input-parte-horas" />
+                    </FormControl>
+                  </FormItem>
+                )} />
+                <FormField control={parteForm.control} name="precioMO" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>€/hora</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" {...field} data-testid="input-parte-precio-mo" />
                     </FormControl>
                   </FormItem>
                 )} />
@@ -574,6 +735,7 @@ export default function OrdenDetalle() {
                   <TableHead className="text-right">Precio Un.</TableHead>
                   <TableHead className="text-right">IGIC</TableHead>
                   <TableHead className="text-right">Subtotal</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -585,11 +747,22 @@ export default function OrdenDetalle() {
                     <TableCell className="text-right">{Number(consumo.precioUnitario).toFixed(2)}€</TableCell>
                     <TableCell className="text-right">{Number(consumo.igic).toFixed(1)}%</TableCell>
                     <TableCell className="text-right font-medium">{(Number(consumo.precioUnitario) * Number(consumo.cantidad)).toFixed(2)}€</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        disabled={deleteConsumoMutation.isPending}
+                        onClick={() => deleteConsumoMutation.mutate(consumo.id)}
+                        data-testid={`button-delete-consumo-${consumo.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {(!consumos || consumos.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                       No hay artículos consumidos
                     </TableCell>
                   </TableRow>

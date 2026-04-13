@@ -493,6 +493,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/ordenes/:orId/partes/:parteId", authenticateToken, requireRole("admin", "jefe_taller", "mecanico"), async (req, res) => {
+    try {
+      const parteId = parseInt(req.params.parteId);
+      await storage.deleteParteTrabajo(parteId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/ordenes/:orId/consumos/:consumoId", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico"), async (req, res) => {
+    try {
+      const consumoId = parseInt(req.params.consumoId);
+      await storage.deleteConsumoArticulo(consumoId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Artículos routes
   app.get("/api/articulos", authenticateToken, requireRole("admin", "jefe_taller", "almacen", "mecanico", "recepcion"), async (req, res) => {
     try {
