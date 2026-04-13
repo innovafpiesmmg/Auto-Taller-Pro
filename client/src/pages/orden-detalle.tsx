@@ -120,7 +120,26 @@ export default function OrdenDetalle() {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id] });
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error al guardar",
+        description: error.message || "No se pudieron guardar los cambios. Comprueba la conexión.",
+        variant: "destructive",
+      });
+    },
   });
+
+  // Wrapper que añade onSuccess/onError por llamada sin duplicar el onError global
+  const updateOrden = (
+    updates: Partial<OrdenReparacion>,
+    callbacks?: { onSuccess?: () => void }
+  ) => {
+    updateOrdenMutation.mutate(updates, {
+      onSuccess: () => {
+        callbacks?.onSuccess?.();
+      },
+    });
+  };
 
   const addParteMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -137,6 +156,13 @@ export default function OrdenDetalle() {
         completado: false,
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error al añadir parte",
+        description: error.message || "No se pudo guardar el parte de trabajo.",
+        variant: "destructive",
+      });
+    },
   });
 
   const addConsumoMutation = useMutation({
@@ -145,12 +171,19 @@ export default function OrdenDetalle() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id, "consumos"] });
-      toast({ title: "Consumo añadido" });
+      toast({ title: "Recambio añadido" });
       consumoForm.reset({
         articuloId: undefined,
         cantidad: "1.00",
         precioUnitario: "0.00",
         igic: "7.00",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al añadir recambio",
+        description: error.message || "No se pudo guardar el recambio.",
+        variant: "destructive",
       });
     },
   });
@@ -177,26 +210,32 @@ export default function OrdenDetalle() {
   });
 
   const handleStatusChange = (newStatus: string) => {
-    updateOrdenMutation.mutate({ estado: newStatus as any });
+    updateOrden({ estado: newStatus as any });
   };
 
   const handleRecepcionistChange = (userId: string) => {
-    updateOrdenMutation.mutate({ recepcionadoPorId: parseInt(userId) });
+    updateOrden({ recepcionadoPorId: parseInt(userId) });
   };
 
   const handleSaveRecepcion = (checklist: ChecklistItem[], signature: string) => {
-    updateOrdenMutation.mutate({
-      checklistRecepcion: JSON.stringify(checklist),
-      firmaDigital: signature,
-    });
-    toast({
-      title: "Recepción guardada",
-      description: "Checklist y firma guardados correctamente.",
-    });
+    updateOrden(
+      {
+        checklistRecepcion: JSON.stringify(checklist),
+        firmaDigital: signature,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Recepción guardada",
+            description: "Checklist y firma guardados correctamente.",
+          });
+        },
+      }
+    );
   };
 
   const handleSaveFotos = (fotos: string[]) => {
-    updateOrdenMutation.mutate({ fotosRecepcion: JSON.stringify(fotos) });
+    updateOrden({ fotosRecepcion: JSON.stringify(fotos) });
   };
 
   const handleCreateFactura = () => {
