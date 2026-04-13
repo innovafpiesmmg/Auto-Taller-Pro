@@ -164,6 +164,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lista reducida de usuarios accesible a todos los roles del taller (para selectores de mecánico, recepcionista, etc.)
+  app.get("/api/users/directorio", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"), async (req, res) => {
+    try {
+      const users = await storage.getUsers();
+      const directorio = users.map(({ id, nombre, email, roles, activo }) => ({ id, nombre, email, roles, activo }));
+      res.json(directorio);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.put("/api/users/:id", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);

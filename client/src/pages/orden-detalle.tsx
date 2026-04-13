@@ -118,7 +118,7 @@ export default function OrdenDetalle() {
   });
 
   const { data: usuarios } = useQuery<User[]>({
-    queryKey: ["/api/users"],
+    queryKey: ["/api/users/directorio"],
   });
 
   const updateOrdenMutation = useMutation({
