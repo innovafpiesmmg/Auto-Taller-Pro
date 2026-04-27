@@ -44,7 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Cita, Cliente, Vehiculo } from "@shared/schema";
+import type { Cita, Cliente, Vehiculo, OrdenReparacion } from "@shared/schema";
 import { insertCitaSchema } from "@shared/schema";
 import { z } from "zod";
 import {
@@ -94,6 +94,13 @@ export default function Citas() {
   const { data: vehiculos } = useQuery<Vehiculo[]>({
     queryKey: ["/api/vehiculos"],
   });
+
+  const { data: ordenes } = useQuery<OrdenReparacion[]>({
+    queryKey: ["/api/ordenes"],
+  });
+
+  const getOrdenParaCita = (citaId: number) =>
+    ordenes?.find(o => o.citaId === citaId) ?? null;
 
   const today = startOfDay(new Date());
   const citasHoy = citas?.filter(c => 
@@ -530,17 +537,30 @@ export default function Citas() {
                                     )}
                                   </div>
                                   <div className="flex gap-2">
-                                    {(cita.estado === 'confirmada' || cita.estado === 'pendiente') && (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => createORMutation.mutate(cita)}
-                                        disabled={createORMutation.isPending}
-                                        data-testid={`button-crear-or-cita-${cita.id}`}
-                                      >
-                                        <FileText className="h-4 w-4 mr-1" />
-                                        Crear OR
-                                      </Button>
-                                    )}
+                                    {(cita.estado === 'confirmada' || cita.estado === 'pendiente') && (() => {
+                                      const orExistente = getOrdenParaCita(cita.id);
+                                      return orExistente ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => setLocation(`/ordenes/${orExistente.id}`)}
+                                          data-testid={`button-ver-or-cita-${cita.id}`}
+                                        >
+                                          <FileText className="h-4 w-4 mr-1" />
+                                          Ver OR
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          onClick={() => createORMutation.mutate(cita)}
+                                          disabled={createORMutation.isPending}
+                                          data-testid={`button-crear-or-cita-${cita.id}`}
+                                        >
+                                          <FileText className="h-4 w-4 mr-1" />
+                                          Crear OR
+                                        </Button>
+                                      );
+                                    })()}
                                     <Button 
                                       variant="outline" 
                                       size="icon" 

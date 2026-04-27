@@ -130,6 +130,22 @@ export default function OrdenDetalle() {
     enabled: !!id,
   });
 
+  const aprobarPresupuestoMutation = useMutation({
+    mutationFn: async (presupuestoId: number) => {
+      return apiRequest(`/api/presupuestos/${presupuestoId}/aprobar`, { method: "POST" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ordenes", id, "presupuesto"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
+      toast({ title: "Presupuesto aprobado", description: "Ya puedes iniciar los trabajos en esta OR." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error al aprobar", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const presupuestoPendiente = !!(presupuestoVinculado && !presupuestoVinculado.aprobado);
+
   const updateOrdenMutation = useMutation({
     mutationFn: async (updates: Partial<OrdenReparacion>) => {
       return apiRequest(`/api/ordenes/${id}`, { method: "PUT", body: updates });
@@ -584,32 +600,72 @@ export default function OrdenDetalle() {
         </Card>
       </div>
 
+      {/* ── BLOQUEO: Presupuesto pendiente de aprobación ────────────────── */}
+      {presupuestoPendiente && presupuestoVinculado && (
+        <div
+          className="flex items-center justify-between gap-4 rounded-md border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/40 px-5 py-4"
+          data-testid="banner-presupuesto-pendiente"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
+                Trabajos bloqueados — presupuesto pendiente de aprobación
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                El presupuesto <span className="font-mono font-bold">{presupuestoVinculado.codigo}</span> ({parseFloat(presupuestoVinculado.total.toString()).toFixed(2)} €) debe ser aprobado antes de poder iniciar o avanzar la reparación.
+              </p>
+            </div>
+          </div>
+          <Button
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
+            size="sm"
+            onClick={() => aprobarPresupuestoMutation.mutate(presupuestoVinculado.id)}
+            disabled={aprobarPresupuestoMutation.isPending}
+            data-testid="button-aprobar-presupuesto-or"
+          >
+            <CheckCircle className="h-4 w-4 mr-1.5" />
+            Aprobar presupuesto
+          </Button>
+        </div>
+      )}
+
       {/* ── SECCIÓN 3: ESTADO DE LA ORDEN ────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-muted-foreground font-medium">Cambiar estado de la OR</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base text-muted-foreground font-medium">Cambiar estado de la OR</CardTitle>
+            {presupuestoPendiente && (
+              <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Bloqueada hasta aprobar presupuesto
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {[
-              { estado: "abierta", label: "Abierta", icon: Clock, activeClass: "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" },
-              { estado: "en_curso", label: "En curso", icon: PlayCircle, activeClass: "bg-amber-500 hover:bg-amber-600 text-white border-amber-500" },
-              { estado: "a_la_espera", label: "A la espera", icon: PauseCircle, activeClass: "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" },
-              { estado: "terminada", label: "Terminada", icon: CheckCircle, activeClass: "bg-green-600 hover:bg-green-700 text-white border-green-600" },
-            ].map(({ estado, label, icon: Icon, activeClass }) => {
+              { estado: "abierta", label: "Abierta", icon: Clock, activeClass: "bg-blue-600 hover:bg-blue-700 text-white border-blue-600", requiresApproval: false },
+              { estado: "en_curso", label: "En curso", icon: PlayCircle, activeClass: "bg-amber-500 hover:bg-amber-600 text-white border-amber-500", requiresApproval: true },
+              { estado: "a_la_espera", label: "A la espera", icon: PauseCircle, activeClass: "bg-orange-500 hover:bg-orange-600 text-white border-orange-500", requiresApproval: true },
+              { estado: "terminada", label: "Terminada", icon: CheckCircle, activeClass: "bg-green-600 hover:bg-green-700 text-white border-green-600", requiresApproval: true },
+            ].map(({ estado, label, icon: Icon, activeClass, requiresApproval }) => {
               const isActive = orden.estado === estado;
+              const isBlocked = requiresApproval && presupuestoPendiente;
               return (
                 <Button
                   key={estado}
                   variant="outline"
                   size="sm"
-                  className={isActive ? activeClass : "text-muted-foreground"}
-                  onClick={() => handleStatusChange(estado)}
-                  disabled={updateOrdenMutation.isPending || orden.estado === "facturada"}
+                  className={isActive ? activeClass : isBlocked ? "text-muted-foreground opacity-40 cursor-not-allowed" : "text-muted-foreground"}
+                  onClick={() => !isBlocked && handleStatusChange(estado)}
+                  disabled={updateOrdenMutation.isPending || orden.estado === "facturada" || isBlocked}
                   data-testid={`button-estado-${estado.replace("_", "")}`}
+                  title={isBlocked ? "Aprueba el presupuesto para poder cambiar este estado" : undefined}
                 >
                   <Icon className="mr-2 h-4 w-4" />{label}
-                  {isActive && <span className="ml-2 h-1.5 w-1.5 rounded-full bg-white/70 inline-block" />}
+                  {isActive && !isBlocked && <span className="ml-2 h-1.5 w-1.5 rounded-full bg-white/70 inline-block" />}
                 </Button>
               );
             })}

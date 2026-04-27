@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CamaraFotos } from "@/components/camara-fotos";
-import { Plus, ClipboardList, Calendar, Edit, Trash2, Search, Download, FileText } from "lucide-react";
+import { Plus, ClipboardList, Calendar, Edit, Trash2, Search, Download, FileText, Clock, FileCheck2 } from "lucide-react";
+import { differenceInDays } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -329,28 +330,46 @@ export default function Ordenes() {
                     ordenesEstado.map((orden) => {
                       const cliente = clientes?.find(c => c.id === orden.clienteId);
                       const vehiculo = vehiculos?.find(v => v.id === orden.vehiculoId);
+                      const diasAbierta = orden.fechaApertura && orden.estado !== 'facturada'
+                        ? differenceInDays(new Date(), new Date(orden.fechaApertura))
+                        : null;
+                      const diasColor = diasAbierta === null ? "" : diasAbierta >= 7 ? "text-red-600 dark:text-red-400" : diasAbierta >= 3 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
                       return (
                         <Card key={orden.id} className="hover-elevate" data-testid={`card-orden-${orden.id}`}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                   <span className="font-semibold" data-testid={`text-numero-orden-${orden.id}`}>
                                     {orden.codigo}
                                   </span>
                                   {vehiculo && (
                                     <Badge variant="outline">{vehiculo.matricula}</Badge>
                                   )}
+                                  {orden.presupuestoId && (
+                                    <Badge variant="outline" className="text-blue-600 border-blue-300 dark:border-blue-700 gap-1">
+                                      <FileCheck2 className="h-3 w-3" />
+                                      Presupuesto
+                                    </Badge>
+                                  )}
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {cliente?.nombre || 'Cliente'} - {vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo'}
+                                <p className="text-sm text-muted-foreground truncate">
+                                  {cliente?.nombre || 'Cliente'} — {vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}` : 'Vehículo'}
                                 </p>
-                                {orden.fechaApertura && (
-                                  <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                                    <Calendar className="h-3 w-3" />
-                                    {new Date(orden.fechaApertura).toLocaleDateString('es-ES')}
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                  {orden.fechaApertura && (
+                                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Calendar className="h-3 w-3" />
+                                      {new Date(orden.fechaApertura).toLocaleDateString('es-ES')}
+                                    </span>
+                                  )}
+                                  {diasAbierta !== null && orden.estado !== 'facturada' && (
+                                    <span className={`flex items-center gap-1 text-xs font-medium ${diasColor}`} data-testid={`text-dias-or-${orden.id}`}>
+                                      <Clock className="h-3 w-3" />
+                                      {diasAbierta === 0 ? "Hoy" : `${diasAbierta}d abierta`}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex gap-2">
                                 {orden.estado === 'terminada' && canManageFacturas && (

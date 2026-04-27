@@ -19,7 +19,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Cita, OrdenReparacion, Cliente, Vehiculo, Articulo } from "@shared/schema";
-import { format, startOfDay, isSameDay } from "date-fns";
+import { format, startOfDay, isSameDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -114,9 +114,18 @@ export default function Dashboard() {
   });
 
   const today = startOfDay(new Date());
+  const tomorrow = addDays(today, 1);
+
   const citasHoy = citas?.filter(c => 
     c.fechaHora && isSameDay(new Date(c.fechaHora), today)
   ) || [];
+
+  const citasManana = citas?.filter(c =>
+    c.fechaHora && isSameDay(new Date(c.fechaHora), tomorrow)
+  ) || [];
+
+  const getOrdenParaCita = (citaId: number) =>
+    ordenes?.find(o => o.citaId === citaId) ?? null;
 
   const pendientesFacturar = ordenes?.filter(o => o.estado === "terminada").slice(0, 5) || [];
   const ordenesRecientes = ordenes?.filter(o => o.estado !== "terminada").slice(0, 5) || [];
@@ -333,8 +342,12 @@ export default function Dashboard() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Citas de Hoy</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Citas de Hoy
+              {citasHoy.length > 0 && <Badge variant="secondary">{citasHoy.length}</Badge>}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3" data-testid="list-citas-hoy">
@@ -367,17 +380,33 @@ export default function Dashboard() {
                           {cita.estado}
                         </Badge>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => createORMutation.mutate(cita)}
-                        disabled={createORMutation.isPending}
-                        data-testid={`button-crear-or-dashboard-${cita.id}`}
-                        className="shrink-0 text-xs"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Crear OR
-                      </Button>
+                      {(() => {
+                        const orExistente = getOrdenParaCita(cita.id);
+                        return orExistente ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setLocation(`/ordenes/${orExistente.id}`)}
+                            data-testid={`button-ver-or-dashboard-${cita.id}`}
+                            className="shrink-0 text-xs"
+                          >
+                            <ChevronRight className="h-3 w-3 mr-1" />
+                            Ver OR
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => createORMutation.mutate(cita)}
+                            disabled={createORMutation.isPending}
+                            data-testid={`button-crear-or-dashboard-${cita.id}`}
+                            className="shrink-0 text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Crear OR
+                          </Button>
+                        );
+                      })()}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       <p className="font-medium text-foreground">{getClienteName(cita.clienteId)}</p>
@@ -456,6 +485,49 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Citas de Mañana ──────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            Citas de Mañana
+            {citasManana.length > 0 && <Badge variant="secondary">{citasManana.length}</Badge>}
+          </CardTitle>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/citas">Ver agenda <ChevronRight className="h-3 w-3 ml-1" /></Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoadingCitas ? (
+            <Skeleton className="h-16 w-full" />
+          ) : citasManana.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">
+              <p>Sin citas programadas para mañana</p>
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {citasManana.map((cita) => (
+                <div key={cita.id} className="flex items-center gap-3 border rounded-md px-3 py-2" data-testid={`cita-manana-${cita.id}`}>
+                  <div className="flex flex-col items-center text-center min-w-[36px]">
+                    <span className="text-xs font-bold text-primary">
+                      {cita.fechaHora ? format(new Date(cita.fechaHora), "HH:mm") : "--"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{getClienteName(cita.clienteId)}</p>
+                    <p className="text-xs text-muted-foreground truncate">{getVehiculoInfo(cita.vehiculoId)}</p>
+                    {cita.motivo && <p className="text-xs text-muted-foreground truncate">{cita.motivo}</p>}
+                  </div>
+                  <Badge variant={cita.estado === 'confirmada' ? 'default' : 'secondary'} className="shrink-0 text-xs">
+                    {cita.estado}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="hover-elevate">
