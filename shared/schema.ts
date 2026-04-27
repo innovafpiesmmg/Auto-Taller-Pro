@@ -872,6 +872,7 @@ export const insertArticuloSchema = createInsertSchema(articulos).omit({ id: tru
 export const insertConsumoArticuloSchema = createInsertSchema(consumosArticulos).omit({ id: true, createdAt: true });
 export const insertPresupuestoSchema = createInsertSchema(presupuestos).omit({ id: true, createdAt: true }).extend({
   codigo: z.string().optional(),
+  fecha: z.coerce.date().optional(),
   fechaAprobacion: z.coerce.date().nullable().optional(),
 });
 export const insertFacturaSchema = createInsertSchema(facturas).omit({ id: true, createdAt: true }).extend({

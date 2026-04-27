@@ -179,8 +179,8 @@ export default function Presupuestos() {
   };
 
   const createMutation = useMutation({
-    mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/presupuestos", { method: "POST", body: JSON.stringify(data) });
+    mutationFn: async (data: any) => {
+      return await apiRequest("/api/presupuestos", { method: "POST", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
@@ -201,8 +201,8 @@ export default function Presupuestos() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/presupuestos/${editingPresupuesto?.id}`, { method: "PUT", body: JSON.stringify(data) });
+    mutationFn: async (data: any) => {
+      return await apiRequest(`/api/presupuestos/${editingPresupuesto?.id}`, { method: "PUT", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
@@ -246,14 +246,20 @@ export default function Presupuestos() {
 
   const onSubmit = (data: FormValues) => {
     const { lineasArray, ...rest } = data;
-    const finalData = {
+    const finalData: any = {
       ...rest,
       lineas: JSON.stringify(lineasArray),
+      // Convert Date to ISO string for JSON transport; server coerces back to Date
+      fecha: rest.fecha ? new Date(rest.fecha).toISOString() : new Date().toISOString(),
     };
+    // Strip vehiculoId if 0 (invalid FK) so the server rejects with a clear message
+    if (!finalData.vehiculoId || finalData.vehiculoId === 0) {
+      delete finalData.vehiculoId;
+    }
     if (editingPresupuesto) {
-      updateMutation.mutate(finalData as any);
+      updateMutation.mutate(finalData);
     } else {
-      createMutation.mutate(finalData as any);
+      createMutation.mutate(finalData);
     }
   };
 
@@ -478,7 +484,7 @@ export default function Presupuestos() {
                       <Select 
                         onValueChange={(value) => {
                           field.onChange(parseInt(value));
-                          form.setValue("vehiculoId", 0);
+                          form.setValue("vehiculoId", undefined as any);
                         }}
                         value={field.value?.toString() || ""}
                       >
