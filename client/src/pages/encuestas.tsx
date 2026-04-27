@@ -70,12 +70,12 @@ export default function Encuestas() {
       if (editingEncuesta) {
         return await apiRequest(`/api/encuestas/${editingEncuesta.id}`, {
           method: "PUT",
-          body: JSON.stringify(data),
+          body: data,
         });
       }
       return await apiRequest("/api/encuestas", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

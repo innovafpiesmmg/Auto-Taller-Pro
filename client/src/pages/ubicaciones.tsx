@@ -81,7 +81,7 @@ export default function Ubicaciones() {
     mutationFn: async (data: FormValues) => {
       return await apiRequest("/api/ubicaciones", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {
@@ -106,7 +106,7 @@ export default function Ubicaciones() {
       if (!editingUbicacion) throw new Error("No hay ubicación seleccionada");
       return await apiRequest(`/api/ubicaciones/${editingUbicacion.id}`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

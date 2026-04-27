@@ -157,7 +157,7 @@ export default function Citas() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/citas", { method: "POST", body: JSON.stringify(data) });
+      return await apiRequest("/api/citas", { method: "POST", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/citas"] });
@@ -179,7 +179,7 @@ export default function Citas() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/citas/${editingCita?.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return await apiRequest(`/api/citas/${editingCita?.id}`, { method: "PUT", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/citas"] });
@@ -590,7 +590,7 @@ export default function Citas() {
                       <Select 
                         onValueChange={(value) => {
                           field.onChange(parseInt(value));
-                          form.setValue("vehiculoId", 0);
+                          form.setValue("vehiculoId", undefined as any);
                         }}
                         value={field.value?.toString() || ""}
                       >

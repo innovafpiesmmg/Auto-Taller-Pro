@@ -203,7 +203,7 @@ export default function Articulos() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/articulos", { method: "POST", body: JSON.stringify(data) });
+      return await apiRequest("/api/articulos", { method: "POST", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articulos"] });
@@ -225,7 +225,7 @@ export default function Articulos() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/articulos/${editingArticulo?.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return await apiRequest(`/api/articulos/${editingArticulo?.id}`, { method: "PUT", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/articulos"] });

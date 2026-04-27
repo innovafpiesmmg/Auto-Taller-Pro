@@ -89,7 +89,7 @@ export default function Proveedores() {
     mutationFn: async (data: FormValues) => {
       return await apiRequest("/api/proveedores", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {
@@ -114,7 +114,7 @@ export default function Proveedores() {
       if (!editingProveedor) throw new Error("No hay proveedor seleccionado");
       return await apiRequest(`/api/proveedores/${editingProveedor.id}`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

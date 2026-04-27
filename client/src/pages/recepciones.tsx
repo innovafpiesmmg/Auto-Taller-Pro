@@ -98,7 +98,7 @@ export default function Recepciones() {
     mutationFn: async (data: FormValues) => {
       return await apiRequest("/api/recepciones", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {
@@ -123,7 +123,7 @@ export default function Recepciones() {
       if (!editingRecepcion) throw new Error("No hay recepción seleccionada");
       return await apiRequest(`/api/recepciones/${editingRecepcion.id}`, {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

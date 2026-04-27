@@ -164,7 +164,7 @@ export default function Ordenes() {
 
   const createMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest("/api/ordenes", { method: "POST", body: JSON.stringify(data) });
+      return await apiRequest("/api/ordenes", { method: "POST", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
@@ -186,7 +186,7 @@ export default function Ordenes() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      return await apiRequest(`/api/ordenes/${editingOrden?.id}`, { method: "PUT", body: JSON.stringify(data) });
+      return await apiRequest(`/api/ordenes/${editingOrden?.id}`, { method: "PUT", body: data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
@@ -460,7 +460,7 @@ export default function Ordenes() {
                       <Select 
                         onValueChange={(value) => {
                           field.onChange(parseInt(value));
-                          form.setValue("vehiculoId", 0);
+                          form.setValue("vehiculoId", undefined as any);
                         }}
                         value={field.value?.toString() || ""}
                       >

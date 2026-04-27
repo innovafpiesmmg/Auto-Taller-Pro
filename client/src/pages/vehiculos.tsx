@@ -271,7 +271,7 @@ export default function Vehiculos() {
       await apiRequest("/api/vehiculos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vehiculos"] });
@@ -296,7 +296,7 @@ export default function Vehiculos() {
       return await apiRequest(`/api/vehiculos/${editingVehiculo.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

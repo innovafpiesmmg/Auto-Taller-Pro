@@ -98,7 +98,7 @@ export default function Configuracion() {
     mutationFn: async (data: { token: string; secret: string }) => {
       return await apiRequest("/api/config/carapi", {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: data,
         headers: { "Content-Type": "application/json" },
       });
     },
@@ -124,7 +124,7 @@ export default function Configuracion() {
     mutationFn: async (data: typeof empresaForm) => {
       return await apiRequest("/api/config/empresa", {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: data,
         headers: { "Content-Type": "application/json" },
       });
     },

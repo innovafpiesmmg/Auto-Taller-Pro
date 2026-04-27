@@ -88,12 +88,12 @@ export default function CatalogoResiduos() {
       if (editingCatalogo) {
         return await apiRequest(`/api/catalogo-residuos/${editingCatalogo.id}`, {
           method: "PUT",
-          body: JSON.stringify(data),
+          body: data,
         });
       }
       return await apiRequest("/api/catalogo-residuos", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

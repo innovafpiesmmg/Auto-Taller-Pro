@@ -71,12 +71,12 @@ export default function Cupones() {
       if (editingCupon) {
         return await apiRequest(`/api/cupones/${editingCupon.id}`, {
           method: "PUT",
-          body: JSON.stringify(data),
+          body: data,
         });
       }
       return await apiRequest("/api/cupones", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

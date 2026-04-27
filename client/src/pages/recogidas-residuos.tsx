@@ -99,12 +99,12 @@ export default function RecogidasResiduos() {
       if (editingRecogida) {
         return await apiRequest(`/api/recogidas-residuos/${editingRecogida.id}`, {
           method: "PUT",
-          body: JSON.stringify(payload),
+          body: payload,
         });
       }
       return await apiRequest("/api/recogidas-residuos", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: payload,
       });
     },
     onSuccess: () => {

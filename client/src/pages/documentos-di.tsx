@@ -102,12 +102,12 @@ export default function DocumentosDI() {
       if (editingDocumento) {
         return await apiRequest(`/api/documentos-di/${editingDocumento.id}`, {
           method: "PUT",
-          body: JSON.stringify(payload),
+          body: payload,
         });
       }
       return await apiRequest("/api/documentos-di", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: payload,
       });
     },
     onSuccess: () => {

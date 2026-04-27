@@ -131,7 +131,7 @@ export default function Usuarios() {
       return await apiRequest("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {
@@ -161,7 +161,7 @@ export default function Usuarios() {
       return await apiRequest(`/api/users/${editingUser?.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
+        body: updateData,
       });
     },
     onSuccess: () => {

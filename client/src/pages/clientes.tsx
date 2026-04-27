@@ -168,7 +168,7 @@ export default function Clientes() {
       await apiRequest("/api/clientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clientes"] });
@@ -193,7 +193,7 @@ export default function Clientes() {
       return await apiRequest(`/api/clientes/${editingCliente.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

@@ -90,12 +90,12 @@ export default function ContenedoresResiduos() {
       if (editingContenedor) {
         return await apiRequest(`/api/contenedores-residuos/${editingContenedor.id}`, {
           method: "PUT",
-          body: JSON.stringify(data),
+          body: data,
         });
       }
       return await apiRequest("/api/contenedores-residuos", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {

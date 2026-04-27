@@ -101,12 +101,12 @@ export default function RegistrosResiduos() {
       if (editingRegistro) {
         return await apiRequest(`/api/registros-residuos/${editingRegistro.id}`, {
           method: "PUT",
-          body: JSON.stringify(payload),
+          body: payload,
         });
       }
       return await apiRequest("/api/registros-residuos", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: payload,
       });
     },
     onSuccess: () => {

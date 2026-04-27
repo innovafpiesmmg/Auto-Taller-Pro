@@ -82,12 +82,12 @@ export default function GestoresResiduos() {
       if (editingGestor) {
         return await apiRequest(`/api/gestores-residuos/${editingGestor.id}`, {
           method: "PUT",
-          body: JSON.stringify(data),
+          body: data,
         });
       }
       return await apiRequest("/api/gestores-residuos", {
         method: "POST",
-        body: JSON.stringify(data),
+        body: data,
       });
     },
     onSuccess: () => {
