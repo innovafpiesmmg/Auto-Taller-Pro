@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "abjh7DhjPYgyO35nXXux-"
+uri = "file://docs/flujo-administrativo.md"
+type = "text"
+title = "Flujo Administrativo del Taller"
