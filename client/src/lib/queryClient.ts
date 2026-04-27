@@ -1,9 +1,18 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthHeaders } from "./api";
 
+function handleAuthFailure(status: number, body: string) {
+  if (status === 401 || (status === 403 && body.includes("Token inválido"))) {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user");
+    window.location.href = "/login";
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
+    handleAuthFailure(res.status, text);
     throw new Error(`${res.status}: ${text}`);
   }
 }
