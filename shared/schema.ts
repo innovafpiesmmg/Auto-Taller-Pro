@@ -123,6 +123,7 @@ export const ordenesReparacion = pgTable("ordenes_reparacion", {
   clienteId: integer("cliente_id").notNull().references(() => clientes.id),
   vehiculoId: integer("vehiculo_id").notNull().references(() => vehiculos.id),
   citaId: integer("cita_id").references(() => citas.id),
+  presupuestoId: integer("presupuesto_id").references((): AnyPgColumn => presupuestos.id),
   fechaApertura: timestamp("fecha_apertura").notNull().defaultNow(),
   fechaCierre: timestamp("fecha_cierre"),
   estado: estadoOrEnum("estado").notNull().default("abierta"),
@@ -568,6 +569,10 @@ export const ordenesReparacionRelations = relations(ordenesReparacion, ({ one, m
   cita: one(citas, {
     fields: [ordenesReparacion.citaId],
     references: [citas.id],
+  }),
+  presupuesto: one(presupuestos, {
+    fields: [ordenesReparacion.presupuestoId],
+    references: [presupuestos.id],
   }),
   partesTrabajo: many(partesTrabajo),
   consumosArticulos: many(consumosArticulos),

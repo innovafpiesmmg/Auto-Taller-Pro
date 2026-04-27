@@ -604,6 +604,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Presupuesto vinculado a una OR
+  app.get("/api/ordenes/:orId/presupuesto", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "mecanico", "finanzas"), async (req, res) => {
+    try {
+      const orId = parseInt(req.params.orId);
+      const presupuesto = await storage.getPresupuestoByOrId(orId);
+      res.json(presupuesto || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Presupuestos routes
   app.get("/api/presupuestos", authenticateToken, requireRole("admin", "jefe_taller", "recepcion", "finanzas"), async (req, res) => {
     try {

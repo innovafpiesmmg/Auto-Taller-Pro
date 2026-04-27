@@ -53,7 +53,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Presupuesto, Cliente, Vehiculo } from "@shared/schema";
+import type { Presupuesto, Cliente, Vehiculo, OrdenReparacion } from "@shared/schema";
 import { insertPresupuestoSchema } from "@shared/schema";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -91,6 +91,35 @@ export default function Presupuestos() {
 
   const { data: vehiculos } = useQuery<Vehiculo[]>({
     queryKey: ["/api/vehiculos"],
+  });
+
+  const { data: ordenes } = useQuery<OrdenReparacion[]>({
+    queryKey: ["/api/ordenes"],
+  });
+
+  const createORMutation = useMutation({
+    mutationFn: async (presupuesto: Presupuesto) => {
+      return await apiRequest("/api/ordenes", {
+        method: "POST",
+        body: {
+          clienteId: presupuesto.clienteId,
+          vehiculoId: presupuesto.vehiculoId,
+          presupuestoId: presupuesto.id,
+          estado: "abierta",
+          fechaApertura: new Date().toISOString(),
+          kmEntrada: 0,
+        },
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/presupuestos"] });
+      toast({ title: "Orden de reparación creada", description: `OR ${data.codigo} vinculada al presupuesto` });
+      setLocation(`/ordenes/${data.id}`);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error al crear OR", description: error.message, variant: "destructive" });
+    },
   });
 
   const now = new Date();
@@ -375,6 +404,7 @@ export default function Presupuestos() {
                   presupuestos.map((presupuesto) => {
                     const cliente = clientes?.find(c => c.id === presupuesto.clienteId);
                     const vehiculo = vehiculos?.find(v => v.id === presupuesto.vehiculoId);
+                    const orVinculada = presupuesto.orId ? ordenes?.find(o => o.id === presupuesto.orId) : null;
                     return (
                       <TableRow key={presupuesto.id} data-testid={`row-presupuesto-${presupuesto.id}`}>
                         <TableCell className="font-medium">{presupuesto.codigo}</TableCell>
@@ -387,21 +417,45 @@ export default function Presupuestos() {
                         </TableCell>
                         <TableCell>{parseFloat(presupuesto.total.toString()).toFixed(2)} €</TableCell>
                         <TableCell>
-                          <Badge variant={presupuesto.aprobado ? "default" : "secondary"}>
-                            {presupuesto.aprobado ? "Aprobado" : "Pendiente"}
-                          </Badge>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={presupuesto.aprobado ? "default" : "secondary"}>
+                              {presupuesto.aprobado ? "Aprobado" : "Pendiente"}
+                            </Badge>
+                            {orVinculada && (
+                              <button
+                                className="text-xs text-primary underline-offset-2 hover:underline text-left flex items-center gap-1"
+                                onClick={() => setLocation(`/ordenes/${orVinculada.id}`)}
+                                data-testid={`link-or-vinculada-${presupuesto.id}`}
+                              >
+                                <ClipboardList className="h-3 w-3 shrink-0" />
+                                {orVinculada.codigo}
+                              </button>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              title="Crear Orden de Reparación"
-                              onClick={() => setLocation(`/ordenes?clienteId=${presupuesto.clienteId}&vehiculoId=${presupuesto.vehiculoId}`)}
-                              data-testid={`button-crear-or-${presupuesto.id}`}
-                            >
-                              <ClipboardList className="h-4 w-4" />
-                            </Button>
+                            {orVinculada ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setLocation(`/ordenes/${orVinculada.id}`)}
+                                data-testid={`button-ver-or-${presupuesto.id}`}
+                              >
+                                <ClipboardList className="h-4 w-4 mr-1.5" />
+                                Ver OR
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm"
+                                onClick={() => createORMutation.mutate(presupuesto)}
+                                disabled={createORMutation.isPending}
+                                data-testid={`button-crear-or-${presupuesto.id}`}
+                              >
+                                <ClipboardList className="h-4 w-4 mr-1.5" />
+                                Crear OR
+                              </Button>
+                            )}
                             {presupuesto.aprobado && canManageFacturas && (
                               <Button 
                                 variant="ghost" 

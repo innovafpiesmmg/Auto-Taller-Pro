@@ -156,6 +156,7 @@ export interface IStorage {
   // Presupuestos
   getPresupuestos(): Promise<Presupuesto[]>;
   getPresupuesto(id: number): Promise<Presupuesto | undefined>;
+  getPresupuestoByOrId(orId: number): Promise<Presupuesto | undefined>;
   createPresupuesto(presupuesto: InsertPresupuesto): Promise<Presupuesto>;
   updatePresupuesto(id: number, presupuesto: Partial<InsertPresupuesto>): Promise<Presupuesto | undefined>;
   deletePresupuesto(id: number): Promise<void>;
@@ -539,6 +540,10 @@ export class DatabaseStorage implements IStorage {
   async createOrdenReparacion(or: InsertOrdenReparacion): Promise<OrdenReparacion> {
     const codigo = or.codigo || await this.nextCode('OR', ordenesReparacion, ordenesReparacion.codigo);
     const [newOr] = await db.insert(ordenesReparacion).values({ ...or, codigo }).returning();
+    // Si viene vinculada a un presupuesto, actualizar presupuestos.orId para mantener consistencia bidireccional
+    if (or.presupuestoId) {
+      await db.update(presupuestos).set({ orId: newOr.id }).where(eq(presupuestos.id, or.presupuestoId));
+    }
     return newOr;
   }
 
@@ -636,6 +641,11 @@ export class DatabaseStorage implements IStorage {
 
   async getPresupuesto(id: number): Promise<Presupuesto | undefined> {
     const [presupuesto] = await db.select().from(presupuestos).where(eq(presupuestos.id, id));
+    return presupuesto || undefined;
+  }
+
+  async getPresupuestoByOrId(orId: number): Promise<Presupuesto | undefined> {
+    const [presupuesto] = await db.select().from(presupuestos).where(eq(presupuestos.orId, orId));
     return presupuesto || undefined;
   }
 

@@ -68,6 +68,7 @@ import {
   type ConsumoArticulo,
   type Articulo,
   type User,
+  type Presupuesto,
 } from "@shared/schema";
 import { useState, useRef } from "react";
 import { format } from "date-fns";
@@ -122,6 +123,11 @@ export default function OrdenDetalle() {
 
   const { data: usuarios } = useQuery<User[]>({
     queryKey: ["/api/users/directorio"],
+  });
+
+  const { data: presupuestoVinculado } = useQuery<Presupuesto | null>({
+    queryKey: ["/api/ordenes", id, "presupuesto"],
+    enabled: !!id,
   });
 
   const updateOrdenMutation = useMutation({
@@ -422,6 +428,37 @@ export default function OrdenDetalle() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Presupuesto vinculado ────────────────────────────────────────── */}
+      {presupuestoVinculado && (
+        <div
+          className="flex items-center justify-between gap-4 rounded-md border px-5 py-3 bg-muted/30"
+          data-testid="banner-presupuesto-vinculado"
+        >
+          <div className="flex items-center gap-3 text-sm">
+            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+            <div>
+              <span className="text-muted-foreground">Presupuesto de origen: </span>
+              <span className="font-semibold">{presupuestoVinculado.codigo}</span>
+              <span className="text-muted-foreground ml-2">
+                · {parseFloat(presupuestoVinculado.total.toString()).toFixed(2)} €
+              </span>
+              {presupuestoVinculado.aprobado && (
+                <Badge variant="outline" className="ml-2 text-green-600 border-green-600">Aprobado</Badge>
+              )}
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/presupuestos")}
+            data-testid="button-ver-presupuesto"
+          >
+            <FileText className="h-4 w-4 mr-1.5" />
+            Ver presupuesto
+          </Button>
+        </div>
+      )}
 
       {/* ── Banner: lista para facturar ──────────────────────────────────── */}
       {orden.estado === "terminada" && (
