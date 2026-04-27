@@ -530,9 +530,8 @@ export default function Citas() {
                                     )}
                                   </div>
                                   <div className="flex gap-2">
-                                    {cita.estado === 'confirmada' && (
+                                    {(cita.estado === 'confirmada' || cita.estado === 'pendiente') && (
                                       <Button
-                                        variant="outline"
                                         size="sm"
                                         onClick={() => createORMutation.mutate(cita)}
                                         disabled={createORMutation.isPending}

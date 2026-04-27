@@ -25,6 +25,9 @@ import {
   PauseCircle,
   StickyNote,
   Gauge,
+  AlertCircle,
+  ChevronRight,
+  Receipt,
 } from "lucide-react";
 import {
   Select,
@@ -342,41 +345,107 @@ export default function OrdenDetalle() {
 
   const recepcionCompleta = !!(orden.checklistRecepcion && orden.firmaDigital && orden.recepcionadoPorId);
 
+  const pasosFlujo = [
+    { id: "recepcion", label: "Recepción", icon: ClipboardCheck, done: recepcionCompleta },
+    { id: "trabajo", label: "Trabajo", icon: Wrench, done: ["en_curso", "a_la_espera", "terminada", "facturada"].includes(orden.estado) },
+    { id: "terminada", label: "Terminada", icon: CheckCircle, done: ["terminada", "facturada"].includes(orden.estado) },
+    { id: "facturada", label: "Facturada", icon: Receipt, done: orden.estado === "facturada" },
+  ];
+
   return (
     <div className="space-y-6 pb-20">
 
       {/* ── Cabecera ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/ordenes")} data-testid="button-volver">
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/ordenes")} data-testid="button-volver" className="mt-1 shrink-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{orden.codigo}</h1>
-          <p className="text-muted-foreground flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold">{orden.codigo}</h1>
+            {orden.estado === "terminada" && (
+              <Button onClick={handleCreateFactura} data-testid="button-crear-factura">
+                <Receipt className="mr-2 h-4 w-4" />
+                Crear Factura
+              </Button>
+            )}
+          </div>
+          <p className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
             {orden.fechaApertura ? format(new Date(orden.fechaApertura), "dd MMM yyyy HH:mm", { locale: es }) : "-"}
+            {orden.clienteNombre && (
+              <><span className="mx-1">·</span><UserIcon className="h-3.5 w-3.5 shrink-0" />{orden.clienteNombre}</>
+            )}
+            {orden.vehiculoMatricula && (
+              <><span className="mx-1">·</span><Car className="h-3.5 w-3.5 shrink-0" />{orden.vehiculoMatricula}</>
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {orden.estado === "terminada" && (
-            <Button onClick={handleCreateFactura} data-testid="button-crear-factura">
-              <FileText className="mr-2 h-4 w-4" />
-              Crear Factura
-            </Button>
-          )}
-          <Badge className="text-sm px-3 py-1" variant={
-            orden.estado === "abierta" ? "default" :
-            orden.estado === "en_curso" ? "secondary" :
-            orden.estado === "terminada" ? "outline" : "destructive"
-          }>
-            {orden.estado.replace("_", " ").toUpperCase()}
-          </Badge>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)} className="shrink-0" data-testid="button-imprimir-recepcion-header">
+          <Printer className="h-4 w-4 mr-2" />
+          Imprimir
+        </Button>
       </div>
+
+      {/* ── Barra de progreso del flujo ──────────────────────────────────── */}
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            {pasosFlujo.map((paso, index) => {
+              const isCurrent =
+                (paso.id === "recepcion" && !pasosFlujo[1].done) ||
+                (paso.id === "trabajo" && pasosFlujo[1].done && !pasosFlujo[2].done) ||
+                (paso.id === "terminada" && pasosFlujo[2].done && !pasosFlujo[3].done) ||
+                (paso.id === "facturada" && pasosFlujo[3].done);
+              return (
+                <div key={paso.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
+                      paso.done
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : isCurrent
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-muted bg-muted/30 text-muted-foreground"
+                    }`}>
+                      <paso.icon className="h-4 w-4" />
+                    </div>
+                    <span className={`text-xs font-medium ${paso.done || isCurrent ? "text-foreground" : "text-muted-foreground"}`}>
+                      {paso.label}
+                    </span>
+                  </div>
+                  {index < pasosFlujo.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-2 mb-4 rounded-full ${paso.done ? "bg-primary" : "bg-muted"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Banner: lista para facturar ──────────────────────────────────── */}
+      {orden.estado === "terminada" && (
+        <div
+          className="flex items-center justify-between gap-4 rounded-md border border-green-500/30 bg-green-50 dark:bg-green-950/30 px-5 py-3"
+          data-testid="banner-pendiente-facturar"
+        >
+          <div className="flex items-center gap-3 text-green-800 dark:text-green-300">
+            <CheckCircle className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-semibold text-sm">Reparación completada — pendiente de facturar</p>
+              <p className="text-xs opacity-75">Genera la factura para cerrar el ciclo y cobrar al cliente.</p>
+            </div>
+          </div>
+          <Button onClick={handleCreateFactura} data-testid="button-crear-factura-banner">
+            <Receipt className="mr-2 h-4 w-4" />
+            Crear Factura
+          </Button>
+        </div>
+      )}
 
       {/* ── SECCIÓN 1: RECEPCIÓN ──────────────────────────────────────────── */}
       <Card className={recepcionCompleta ? "border-green-500/50 dark:border-green-700/50" : ""}>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+        <CardHeader className="flex flex-row items-center gap-2 flex-wrap">
           <CardTitle className="flex items-center gap-2 text-lg">
             <ClipboardCheck className="h-5 w-5" />
             Recepción del Vehículo
@@ -385,16 +454,12 @@ export default function OrdenDetalle() {
                 Completada
               </Badge>
             )}
+            {!recepcionCompleta && (
+              <Badge variant="outline" className="text-amber-600 border-amber-600 ml-1">
+                Pendiente
+              </Badge>
+            )}
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPrintOpen(true)}
-            data-testid="button-imprimir-recepcion-trigger"
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimir Documento
-          </Button>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Recepcionado por */}
@@ -482,39 +547,41 @@ export default function OrdenDetalle() {
         </Card>
       </div>
 
-      {/* ── SECCIÓN 3: ESTADO DE LA ORDEN (solo taller) ──────────────────── */}
+      {/* ── SECCIÓN 3: ESTADO DE LA ORDEN ────────────────────────────────── */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Estado de la Reparación</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-muted-foreground font-medium">Cambiar estado de la OR</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {[
-              { estado: "abierta", label: "Abierta", icon: <Clock className="mr-2 h-4 w-4" /> },
-              { estado: "en_curso", label: "En Curso", icon: <PlayCircle className="mr-2 h-4 w-4" /> },
-              { estado: "a_la_espera", label: "A la espera", icon: <PauseCircle className="mr-2 h-4 w-4" /> },
-              { estado: "terminada", label: "Terminada", icon: <CheckCircle className="mr-2 h-4 w-4" /> },
-            ].map(({ estado, label, icon }) => (
-              <Button
-                key={estado}
-                variant={orden.estado === estado ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleStatusChange(estado)}
-                disabled={updateOrdenMutation.isPending}
-                data-testid={`button-estado-${estado.replace("_", "")}`}
-              >
-                {icon}{label}
-              </Button>
-            ))}
-            <Button
-              variant={orden.estado === "facturada" ? "default" : "outline"}
-              size="sm"
-              disabled
-              data-testid="button-estado-facturada"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Facturada
-            </Button>
+              { estado: "abierta", label: "Abierta", icon: Clock, activeClass: "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" },
+              { estado: "en_curso", label: "En curso", icon: PlayCircle, activeClass: "bg-amber-500 hover:bg-amber-600 text-white border-amber-500" },
+              { estado: "a_la_espera", label: "A la espera", icon: PauseCircle, activeClass: "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" },
+              { estado: "terminada", label: "Terminada", icon: CheckCircle, activeClass: "bg-green-600 hover:bg-green-700 text-white border-green-600" },
+            ].map(({ estado, label, icon: Icon, activeClass }) => {
+              const isActive = orden.estado === estado;
+              return (
+                <Button
+                  key={estado}
+                  variant="outline"
+                  size="sm"
+                  className={isActive ? activeClass : "text-muted-foreground"}
+                  onClick={() => handleStatusChange(estado)}
+                  disabled={updateOrdenMutation.isPending || orden.estado === "facturada"}
+                  data-testid={`button-estado-${estado.replace("_", "")}`}
+                >
+                  <Icon className="mr-2 h-4 w-4" />{label}
+                  {isActive && <span className="ml-2 h-1.5 w-1.5 rounded-full bg-white/70 inline-block" />}
+                </Button>
+              );
+            })}
+            {orden.estado === "facturada" && (
+              <Badge className="px-3 py-1.5 text-sm bg-purple-600 text-white border-purple-600" data-testid="badge-estado-facturada">
+                <Receipt className="mr-2 h-4 w-4" />
+                Facturada
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>

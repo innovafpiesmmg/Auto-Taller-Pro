@@ -355,13 +355,12 @@ export default function Ordenes() {
                               <div className="flex gap-2">
                                 {orden.estado === 'terminada' && canManageFacturas && (
                                   <Button 
-                                    variant="outline" 
-                                    size="icon" 
+                                    size="sm"
                                     onClick={() => navigate(`/facturas?orId=${orden.id}&clienteId=${orden.clienteId}`)}
                                     data-testid={`button-crear-factura-orden-${orden.id}`}
-                                    title="Crear Factura"
                                   >
-                                    <FileText className="h-4 w-4" />
+                                    <FileText className="h-4 w-4 mr-1.5" />
+                                    Facturar
                                   </Button>
                                 )}
                                 <Button 

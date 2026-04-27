@@ -71,16 +71,19 @@ interface NavItem {
 
 const ALL_ROLES = ["admin", "jefe_taller", "recepcion", "mecanico", "almacen", "finanzas"];
 
-const menuItems: NavItem[] = [
+const flujoPrincipalItems: NavItem[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Agenda & Citas", url: "/citas", icon: Calendar, roles: ["admin", "jefe_taller", "recepcion"] },
-  { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "jefe_taller", "recepcion", "finanzas"] },
-  { title: "Vehículos", url: "/vehiculos", icon: Car, roles: ["admin", "jefe_taller", "recepcion", "mecanico"] },
   { title: "Órdenes de Reparación", url: "/ordenes", icon: ClipboardList, roles: ["admin", "jefe_taller", "recepcion", "mecanico"] },
   { title: "Presupuestos", url: "/presupuestos", icon: FileText, roles: ["admin", "jefe_taller", "recepcion"] },
-  { title: "Artículos", url: "/articulos", icon: Package, roles: ["admin", "jefe_taller", "almacen", "mecanico"] },
   { title: "Facturación", url: "/facturas", icon: Receipt, roles: ["admin", "jefe_taller", "finanzas"] },
   { title: "Cobros & Caja", url: "/cobros", icon: Wallet, roles: ["admin", "jefe_taller", "finanzas"] },
+];
+
+const maestrosItems: NavItem[] = [
+  { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "jefe_taller", "recepcion", "finanzas"] },
+  { title: "Vehículos", url: "/vehiculos", icon: Car, roles: ["admin", "jefe_taller", "recepcion", "mecanico"] },
+  { title: "Artículos", url: "/articulos", icon: Package, roles: ["admin", "jefe_taller", "almacen", "mecanico"] },
   { title: "Informes & Estadísticas", url: "/informes", icon: BarChart2, roles: ["admin", "jefe_taller", "finanzas"] },
 ];
 
@@ -223,18 +226,26 @@ export function AppSidebar() {
 
       <SidebarContent>
         <CollapsibleSection
-          label="Navegación"
-          items={menuItems}
+          label="Flujo del Taller"
+          items={flujoPrincipalItems}
           location={location}
           defaultOpen={true}
-          testIdPrefix="navegacion"
+          testIdPrefix="flujo"
+          userRoles={userRoles}
+        />
+        <CollapsibleSection
+          label="Maestros & Datos"
+          items={maestrosItems}
+          location={location}
+          defaultOpen={true}
+          testIdPrefix="maestros"
           userRoles={userRoles}
         />
         <CollapsibleSection
           label="Compras & Almacén"
           items={comprasAlmacenItems}
           location={location}
-          defaultOpen={true}
+          defaultOpen={false}
           testIdPrefix="compras"
           userRoles={userRoles}
         />

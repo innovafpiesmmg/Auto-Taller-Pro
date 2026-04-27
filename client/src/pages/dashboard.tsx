@@ -9,15 +9,21 @@ import {
   Car,
   Plus,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Receipt,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Cita, OrdenReparacion, Cliente, Vehiculo, Articulo } from "@shared/schema";
 import { format, startOfDay, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth";
 import { 
   BarChart, 
   Bar, 
@@ -49,6 +55,10 @@ const COLORS = ["#3b82f6", "#f59e0b", "#22c55e", "#a855f7"];
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const canManageFacturas = user?.roles?.some((r: string) => ["admin", "finanzas"].includes(r));
+
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/stats/dashboard"],
     refetchInterval: 30000,
@@ -79,12 +89,37 @@ export default function Dashboard() {
     refetchInterval: 30000,
   });
 
+  const createORMutation = useMutation({
+    mutationFn: async (cita: Cita) => {
+      return await apiRequest("/api/ordenes", {
+        method: "POST",
+        body: {
+          clienteId: cita.clienteId,
+          vehiculoId: cita.vehiculoId,
+          citaId: cita.id,
+          estado: "abierta",
+          fechaApertura: new Date().toISOString(),
+          kmEntrada: 0,
+        },
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ordenes"] });
+      toast({ title: "Orden de reparación creada", description: "Redirigiendo al detalle de la OR..." });
+      setLocation(`/ordenes/${data.id}`);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "No se pudo crear la orden", variant: "destructive" });
+    },
+  });
+
   const today = startOfDay(new Date());
   const citasHoy = citas?.filter(c => 
     c.fechaHora && isSameDay(new Date(c.fechaHora), today)
   ) || [];
 
-  const ordenesRecientes = ordenes?.slice(0, 5) || [];
+  const pendientesFacturar = ordenes?.filter(o => o.estado === "terminada").slice(0, 5) || [];
+  const ordenesRecientes = ordenes?.filter(o => o.estado !== "terminada").slice(0, 5) || [];
 
   const getClienteName = (clienteId: number) => {
     const cliente = clientes?.find(c => c.id === clienteId);
@@ -319,24 +354,35 @@ export default function Dashboard() {
                 citasHoy.map((cita) => (
                   <div 
                     key={cita.id} 
-                    className="border rounded-lg p-3 space-y-1 hover-elevate"
+                    className="border rounded-lg p-3 space-y-1"
                     data-testid={`cita-hoy-${cita.id}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="font-medium">
                           {cita.fechaHora ? format(new Date(cita.fechaHora), "HH:mm", { locale: es }) : "Sin hora"}
                         </span>
+                        <Badge variant={cita.estado === 'confirmada' ? 'default' : 'secondary'} className="shrink-0">
+                          {cita.estado}
+                        </Badge>
                       </div>
-                      <Badge variant={cita.estado === 'confirmada' ? 'default' : 'secondary'}>
-                        {cita.estado}
-                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => createORMutation.mutate(cita)}
+                        disabled={createORMutation.isPending}
+                        data-testid={`button-crear-or-dashboard-${cita.id}`}
+                        className="shrink-0 text-xs"
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Crear OR
+                      </Button>
                     </div>
                     <div className="text-sm text-muted-foreground">
                       <p className="font-medium text-foreground">{getClienteName(cita.clienteId)}</p>
                       <p>{getVehiculoInfo(cita.vehiculoId)}</p>
-                      <p className="text-xs mt-1">{cita.motivo}</p>
+                      {cita.motivo && <p className="text-xs mt-1">{cita.motivo}</p>}
                     </div>
                   </div>
                 ))
@@ -346,46 +392,62 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Órdenes Recientes</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-amber-500" />
+              Pendientes de Facturar
+              {pendientesFacturar.length > 0 && (
+                <Badge className="bg-amber-500 text-white ml-1">{pendientesFacturar.length}</Badge>
+              )}
+            </CardTitle>
+            <Button asChild variant="ghost" size="sm" data-testid="button-ver-pendientes">
+              <Link href="/ordenes">Ver todas <ChevronRight className="h-3 w-3 ml-1" /></Link>
+            </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3" data-testid="list-ordenes-recientes">
+            <div className="space-y-2" data-testid="list-pendientes-facturar">
               {isLoadingOrdenes ? (
                 <>
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
                 </>
-              ) : ordenesRecientes.length === 0 ? (
+              ) : pendientesFacturar.length === 0 ? (
                 <div className="flex items-center justify-center py-8 text-muted-foreground">
                   <div className="text-center">
-                    <ClipboardList className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No hay órdenes de reparación</p>
+                    <Receipt className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">Sin ORs pendientes de facturar</p>
                   </div>
                 </div>
               ) : (
-                ordenesRecientes.map((orden) => (
-                  <div 
-                    key={orden.id} 
-                    className="border rounded-lg p-3 space-y-1 hover-elevate"
-                    data-testid={`orden-reciente-${orden.id}`}
+                pendientesFacturar.map((orden) => (
+                  <div
+                    key={orden.id}
+                    className="flex items-center justify-between gap-2 border border-amber-200 dark:border-amber-900 rounded-md px-3 py-2 bg-amber-50/50 dark:bg-amber-950/20"
+                    data-testid={`pendiente-facturar-${orden.id}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">OR #{orden.codigo}</span>
-                      <Badge variant={
-                        orden.estado === 'abierta' ? 'default' : 
-                        orden.estado === 'en_curso' ? 'secondary' :
-                        orden.estado === 'terminada' ? 'default' : 'secondary'
-                      }>
-                        {orden.estado.replace('_', ' ')}
-                      </Badge>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{orden.codigo}</p>
+                      <p className="text-xs text-muted-foreground truncate">{getClienteName(orden.clienteId)} · {getVehiculoInfo(orden.vehiculoId)}</p>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      <p className="font-medium text-foreground">{getClienteName(orden.clienteId)}</p>
-                      <p>{getVehiculoInfo(orden.vehiculoId)}</p>
-                      <p className="text-xs mt-1">
-                        {orden.fechaApertura ? format(new Date(orden.fechaApertura), "dd MMM yyyy", { locale: es }) : "Sin fecha"}
-                      </p>
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setLocation(`/ordenes/${orden.id}`)}
+                        data-testid={`button-ver-or-${orden.id}`}
+                      >
+                        Ver
+                      </Button>
+                      {canManageFacturas && (
+                        <Button
+                          size="sm"
+                          onClick={() => setLocation(`/facturas?orId=${orden.id}&clienteId=${orden.clienteId}`)}
+                          data-testid={`button-facturar-${orden.id}`}
+                        >
+                          <Receipt className="h-3 w-3 mr-1" />
+                          Facturar
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))
