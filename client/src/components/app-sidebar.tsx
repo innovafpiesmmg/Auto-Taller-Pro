@@ -24,6 +24,7 @@ import {
   Truck,
   Shield,
   ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -112,6 +113,7 @@ const gestionResiduosItems: NavItem[] = [
 const configuracionItems: NavItem[] = [
   { title: "Usuarios", url: "/usuarios", icon: Shield, roles: ["admin"] },
   { title: "Configuración", url: "/configuracion", icon: Settings, roles: ["admin", "jefe_taller"] },
+  { title: "Manual de Uso", url: "/manual", icon: HelpCircle },
 ];
 
 function hasAccess(item: NavItem, userRoles: string[]): boolean {

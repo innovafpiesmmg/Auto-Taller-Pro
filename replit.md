@@ -58,6 +58,7 @@ The system uses a modern full-stack architecture. The frontend is built with **R
     - **IGIC Invoicing**: Multiple invoice types, configurable IGIC rates. Printable invoice dialog (`factura-print.tsx`) with company branding. Auto-open with pre-filled data from OR→Factura workflow (URL params `?orId=&clienteId=`).
     - **Payments & Cash Register**: Multiple payment methods, cash reconciliation.
     - **Reports & Statistics**: `/informes` page with 4 tabs: Billing (bar chart, top clients), Orders (donut chart), Clients (KPIs), Inventory (low stock table).
+    - **Manual de Uso**: `/manual` page — interactive 9-phase workflow guide (Fase 1–9: Cita → Recepción → Presupuesto → Trabajo → Cierre OR → Facturación → Cobro → Entrega → Posventa). Collapsible cards per phase with steps, tips, role badges and direct module links. Flow overview strip, visual indicators reference, modules-per-phase table, roles & responsibilities. Linked from sidebar under "Configuración" section. Source document at `docs/flujo-administrativo.md`.
     - **After-Sales CRM**: Automated campaigns, satisfaction surveys.
     - **Waste Management**: Compliance with Canary Islands regulations, cataloging (LER), container management, generation logging.
     - **Purchasing & Warehouse**: Full CRUD for suppliers, purchase orders, goods receipts, multi-warehouse location system.

@@ -37,6 +37,7 @@ import DocumentosDI from "@/pages/documentos-di";
 import RecogidasResiduos from "@/pages/recogidas-residuos";
 import Informes from "@/pages/informes";
 import Configuracion from "@/pages/configuracion";
+import Manual from "@/pages/manual";
 import Landing from "@/pages/landing";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,7 @@ function ProtectedRouter() {
               <Route path="/recogidas-residuos" component={RecogidasResiduos} />
               <Route path="/informes" component={Informes} />
               <Route path="/configuracion" component={Configuracion} />
+              <Route path="/manual" component={Manual} />
               <Route component={NotFound} />
             </Switch>
           </main>
