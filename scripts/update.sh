@@ -100,23 +100,47 @@ else
     || warn "No se pudo ejecutar la migración. Si hay errores de roles, ejecuta reset-admin.sh."
 fi
 
-# 3. Aplicar cambios de esquema con drizzle-kit (no-interactivo)
-#    La migración SQL anterior garantiza que la BD ya tiene 'roles',
-#    por lo que drizzle-kit no debería mostrar prompts.
-#    Como seguridad extra, se acepta el prompt por defecto via stdin.
+# 3. Backup de seguridad de la tabla users antes de drizzle-kit push
+info "Haciendo backup de tabla users antes de migración..."
+if command -v psql &>/dev/null; then
+  USERS_BACKUP=$(psql "${DATABASE_URL}" -t -c \
+    "SELECT json_agg(row_to_json(u)) FROM users u;" 2>/dev/null || echo "")
+  if [[ -n "${USERS_BACKUP}" && "${USERS_BACKUP}" != "null" ]]; then
+    BACKUP_FILE="${APP_DIR}/.users_backup_$(date +%Y%m%d_%H%M%S).json"
+    echo "${USERS_BACKUP}" > "${BACKUP_FILE}"
+    chmod 600 "${BACKUP_FILE}"
+    log "Backup de usuarios guardado en ${BACKUP_FILE}"
+  fi
+fi
+
+# 4. Aplicar cambios de esquema con drizzle-kit (no-interactivo)
+#    Usamos 'yes no' para rechazar cualquier prompt de eliminación de tablas/cols.
 info "Aplicando migraciones de base de datos..."
 sudo -u "${APP_USER}" bash -c "
   set -a; source '${ENV_FILE}'; set +a
   cd '${APP_DIR}'
-  echo '' | npx drizzle-kit push 2>&1
-" && log "Migraciones aplicadas." || warn "drizzle-kit push devolvió un aviso. Revisa si el esquema está correcto."
+  printf 'no\n' | npx drizzle-kit push 2>&1 | tee /tmp/drizzle-push.log
+" && log "Migraciones aplicadas." \
+  || warn "drizzle-kit push devolvió un aviso. Ver /tmp/drizzle-push.log para detalles."
 
-# 4. Reconstruir la aplicación
+# 5. Verificar que la tabla users sigue teniendo datos
+if command -v psql &>/dev/null; then
+  USER_COUNT=$(psql "${DATABASE_URL}" -t -c "SELECT COUNT(*) FROM users;" 2>/dev/null | tr -d '[:space:]' || echo "0")
+  if [[ "${USER_COUNT}" == "0" ]]; then
+    warn "¡ATENCIÓN! La tabla users quedó vacía tras la migración."
+    warn "Ejecuta: sudo bash ${APP_DIR}/scripts/reset-admin.sh"
+    warn "O restaura el backup: ${BACKUP_FILE:-'(no disponible)'}"
+  else
+    log "Tabla users verificada: ${USER_COUNT} usuario(s) presentes."
+  fi
+fi
+
+# 6. Reconstruir la aplicación
 info "Reconstruyendo la aplicación..."
 sudo -u "${APP_USER}" bash -c "cd '${APP_DIR}' && npm run build"
 log "Build completado."
 
-# 5. Reiniciar PM2
+# 7. Reiniciar PM2
 info "Reiniciando la aplicación..."
 sudo -u "${APP_USER}" bash -c "
   set -a; source '${ENV_FILE}'; set +a
