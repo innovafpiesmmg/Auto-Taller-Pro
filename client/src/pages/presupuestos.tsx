@@ -141,8 +141,6 @@ export default function Presupuestos() {
       clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
       vehiculoId: z.number().int().min(1, "Debe seleccionar un vehículo"),
       lineasArray: z.array(presupuestoLineaSchema),
-      total: z.union([z.string(), z.number()]),
-      totalIgic: z.union([z.string(), z.number()]),
     })),
     defaultValues: {
       clienteId: undefined,
@@ -461,7 +459,7 @@ export default function Presupuestos() {
                                 variant="ghost" 
                                 size="icon"
                                 title="Crear Factura"
-                                onClick={() => setLocation(`/facturas?clienteId=${presupuesto.clienteId}`)}
+                                onClick={() => setLocation(`/facturas?presupuestoId=${presupuesto.id}&clienteId=${presupuesto.clienteId}`)}
                                 data-testid={`button-crear-factura-${presupuesto.id}`}
                               >
                                 <Receipt className="h-4 w-4" />

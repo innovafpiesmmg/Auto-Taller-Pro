@@ -63,7 +63,17 @@ import { FacturaPrint } from "@/components/factura-print";
 import { PaginationControls } from "@/components/pagination-controls";
 import { exportToCSV } from "@/lib/export-csv";
 
-type FormValues = z.infer<typeof insertFacturaSchema>;
+// Schema definido fuera del componente para evitar recreación en cada render.
+// z.coerce.number() permite que el formulario trabaje con números mientras
+// el servidor usa z.coerce.string() para Drizzle decimal.
+const facturaFormSchema = insertFacturaSchema.extend({
+  clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
+  baseImponible: z.coerce.number().min(0),
+  totalIgic: z.coerce.number().min(0),
+  total: z.coerce.number().min(0),
+});
+
+type FormValues = z.infer<typeof facturaFormSchema>;
 
 interface LineaForm {
   tipo: string;
@@ -228,15 +238,6 @@ export default function Facturas() {
     const fecha = f.fecha && new Date(f.fecha);
     return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
   }).length || 0;
-
-  // Los campos decimal de Drizzle generan z.string() en el schema,
-  // pero el formulario trabaja con números — se extienden con z.coerce.number()
-  const facturaFormSchema = insertFacturaSchema.extend({
-    clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
-    baseImponible: z.coerce.number().min(0),
-    totalIgic: z.coerce.number().min(0),
-    total: z.coerce.number().min(0),
-  });
 
   const form = useForm<any>({
     resolver: zodResolver(facturaFormSchema),
