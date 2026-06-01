@@ -716,10 +716,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { lineas, ...facturaData } = req.body;
       if (facturaData.fecha && typeof facturaData.fecha === 'string') facturaData.fecha = new Date(facturaData.fecha);
-      // Normalizar campos decimal: el cliente puede enviar números o strings
-      if (facturaData.baseImponible !== undefined) facturaData.baseImponible = String(facturaData.baseImponible);
-      if (facturaData.totalIgic !== undefined) facturaData.totalIgic = String(facturaData.totalIgic);
-      if (facturaData.total !== undefined) facturaData.total = String(facturaData.total);
       const validatedFactura = insertFacturaSchema.parse(facturaData);
       const factura = await storage.createFactura(validatedFactura);
       
@@ -742,9 +738,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const data = { ...req.body };
       if (data.fecha && typeof data.fecha === 'string') data.fecha = new Date(data.fecha);
-      if (data.baseImponible !== undefined) data.baseImponible = String(data.baseImponible);
-      if (data.totalIgic !== undefined) data.totalIgic = String(data.totalIgic);
-      if (data.total !== undefined) data.total = String(data.total);
       const validated = insertFacturaSchema.partial().parse(data);
       const factura = await storage.updateFactura(id, validated);
       if (!factura) {

@@ -848,6 +848,12 @@ export const recogidasResiduosRelations = relations(recogidasResiduos, ({ one })
   }),
 }));
 
+// Helpers para campos decimal — drizzle-zod genera z.string() pero el cliente envía números.
+// z.coerce.string() acepta number|string y convierte a string antes de insertar en Drizzle.
+const _d = z.coerce.string();                        // requerido
+const _do = z.coerce.string().optional();            // opcional
+const _dno = z.coerce.string().nullable().optional();// nullable opcional
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -870,31 +876,43 @@ export const insertOrdenReparacionSchema = createInsertSchema(ordenesReparacion)
   fechaApertura: z.coerce.date().optional(),
   fechaCierre: z.coerce.date().nullable().optional(),
 });
-export const insertParteTrabajoSchema = createInsertSchema(partesTrabajo).omit({ id: true, createdAt: true });
+export const insertParteTrabajoSchema = createInsertSchema(partesTrabajo).omit({ id: true, createdAt: true }).extend({
+  tiempoEstimado: _dno, tiempoReal: _dno, precioMO: _dno,
+});
 export const insertArticuloSchema = createInsertSchema(articulos).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   referencia: z.string().optional(),
+  precioCoste: _dno, precioVenta: _d, igic: _do,
 });
-export const insertConsumoArticuloSchema = createInsertSchema(consumosArticulos).omit({ id: true, createdAt: true });
+export const insertConsumoArticuloSchema = createInsertSchema(consumosArticulos).omit({ id: true, createdAt: true }).extend({
+  cantidad: _d, precioUnitario: _d, igic: _do,
+});
 export const insertPresupuestoSchema = createInsertSchema(presupuestos).omit({ id: true, createdAt: true }).extend({
   codigo: z.string().optional(),
   fecha: z.coerce.date().optional(),
   fechaAprobacion: z.coerce.date().nullable().optional(),
+  totalMO: _do, totalArticulos: _do, descuento: _do, totalIgic: _do, total: _d,
 });
 export const insertFacturaSchema = createInsertSchema(facturas).omit({ id: true, createdAt: true }).extend({
   numero: z.string().optional(),
   fecha: z.coerce.date().optional(),
+  baseImponible: _d, totalIgic: _d, total: _d,
 });
-export const insertLineaFacturaSchema = createInsertSchema(lineasFactura).omit({ id: true });
+export const insertLineaFacturaSchema = createInsertSchema(lineasFactura).omit({ id: true }).extend({
+  cantidad: _d, precioUnitario: _d, igic: _d, importe: _d,
+});
 export const insertCobroSchema = createInsertSchema(cobros).omit({ id: true, createdAt: true }).extend({
   fecha: z.coerce.date().optional(),
+  importe: _d,
 });
 export const insertProveedorSchema = createInsertSchema(proveedores).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPedidoCompraSchema = createInsertSchema(pedidosCompra).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   numero: z.string().optional(),
   fechaEntregaEstimada: z.coerce.date().nullable().optional(),
+  total: _d,
 });
 export const insertLineaPedidoSchema = createInsertSchema(lineasPedido).omit({ id: true }).extend({
   fechaPrevistaEntrega: z.coerce.date().nullable().optional(),
+  cantidad: _d, cantidadRecibida: _do, precioUnitario: _d, igic: _do, importe: _d,
 });
 export const insertRecepcionSchema = createInsertSchema(recepciones).omit({ id: true, createdAt: true }).extend({
   numero: z.string().optional(),
@@ -902,9 +920,12 @@ export const insertRecepcionSchema = createInsertSchema(recepciones).omit({ id: 
 });
 export const insertLineaRecepcionSchema = createInsertSchema(lineasRecepcion).omit({ id: true }).extend({
   fechaCaducidad: z.coerce.date().nullable().optional(),
+  cantidad: _d,
 });
 export const insertUbicacionSchema = createInsertSchema(ubicaciones).omit({ id: true, createdAt: true });
-export const insertMovimientoAlmacenSchema = createInsertSchema(movimientosAlmacen).omit({ id: true });
+export const insertMovimientoAlmacenSchema = createInsertSchema(movimientosAlmacen).omit({ id: true }).extend({
+  cantidad: _d,
+});
 export const insertCampanaSchema = createInsertSchema(campanas).omit({ id: true, createdAt: true, updatedAt: true }).extend({
   fechaInicio: z.coerce.date().nullable().optional(),
   fechaFin: z.coerce.date().nullable().optional(),
@@ -914,24 +935,29 @@ export const insertRespuestaEncuestaSchema = createInsertSchema(respuestasEncues
 export const insertCuponSchema = createInsertSchema(cupones).omit({ id: true, createdAt: true }).extend({
   fechaInicio: z.coerce.date(),
   fechaExpiracion: z.coerce.date(),
+  valorDescuento: _d, montoMinimo: _dno,
 });
 export const insertCatalogoResiduoSchema = createInsertSchema(catalogoResiduos).omit({ id: true, createdAt: true });
 export const insertContenedorResiduoSchema = createInsertSchema(contenedoresResiduos).omit({ id: true, createdAt: true }).extend({
   fechaInstalacion: z.coerce.date().optional(),
+  capacidadMaxima: _d, cantidadActual: _do,
 });
 export const insertGestorResiduoSchema = createInsertSchema(gestoresResiduos).omit({ id: true, createdAt: true }).extend({
   fechaCaducidadAutorizacion: z.coerce.date().nullable().optional(),
 });
 export const insertRegistroResiduoSchema = createInsertSchema(registrosResiduos).omit({ id: true, createdAt: true }).extend({
   fecha: z.coerce.date().optional(),
+  cantidad: _d,
 });
 export const insertDocumentoDISchema = createInsertSchema(documentosDI).omit({ id: true, createdAt: true }).extend({
   numero: z.string().optional(),
   fechaEmision: z.coerce.date().optional(),
   fechaRecogida: z.coerce.date().nullable().optional(),
+  cantidadTotal: _d,
 });
 export const insertRecogidaResiduoSchema = createInsertSchema(recogidasResiduos).omit({ id: true, createdAt: true }).extend({
   fechaRecogida: z.coerce.date().optional(),
+  cantidadRecogida: _d, costeGestion: _dno,
 });
 export const insertConfigSistemaSchema = createInsertSchema(configSistema).omit({ id: true, updatedAt: true });
 
