@@ -229,10 +229,17 @@ export default function Facturas() {
     return fecha && fecha >= firstDayOfMonth && fecha < firstDayNextMonth;
   }).length || 0;
 
+  // Los campos decimal de Drizzle generan z.string() en el schema,
+  // pero el formulario trabaja con números — se extienden con z.coerce.number()
+  const facturaFormSchema = insertFacturaSchema.extend({
+    clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
+    baseImponible: z.coerce.number().min(0),
+    totalIgic: z.coerce.number().min(0),
+    total: z.coerce.number().min(0),
+  });
+
   const form = useForm<any>({
-    resolver: zodResolver(insertFacturaSchema.extend({
-      clienteId: z.number().int().min(1, "Debe seleccionar un cliente"),
-    })),
+    resolver: zodResolver(facturaFormSchema),
     defaultValues: {
       serie: "F", tipo: "ordinaria",
       clienteId: undefined, fecha: new Date(),
